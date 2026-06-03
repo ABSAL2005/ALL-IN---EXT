@@ -197,8 +197,8 @@ class BossBattle extends Phaser.Scene {
 
         // set up player avatar
         my.sprite.player = this.physics.add.sprite(
-            this.map.tileToWorldX(2),
-            this.map.tileToWorldY(5),
+            this.map.tileToWorldX(0),
+            this.map.tileToWorldY(25),
             "player_right"
         );
         my.sprite.player.setCollideWorldBounds(true);
