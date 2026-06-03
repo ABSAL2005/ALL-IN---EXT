@@ -1,0 +1,95 @@
+{
+    "activeFile": "Jackpot.tmx",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "file.lastUsedOpenFilter": "All Files (*)",
+    "fileStates": {
+        "": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "#monochrome_tilemap_packed": {
+            "scaleInDock": 1
+        },
+        "#monochrome_tilemap_transparent_packed": {
+            "scaleInDock": 1
+        },
+        "C:/CMPM 120/Pathfinder/assets/tiny-town-tileset.tmx": {
+            "scale": 1.747109375,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 319.95707194920186,
+                "y": 200.0447167195815
+            }
+        },
+        "C:/CMPM 120/Pathfinder/assets/tiny-town-tileset.tmx#kenney-tiny-town": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "C:/CMPM 120/PlatformImprovement/assets/platformer-level-1.tmx": {
+            "scale": 0.75,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 584.6666666666666,
+                "y": 387.3333333333333
+            }
+        },
+        "C:/CMPM 120/PlatformImprovement/assets/platformer-level-1.tmx#kenny_tilemap_packed": {
+            "scaleInDock": 1
+        },
+        "Gold.json": {
+            "scale": 0.75,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 318.66666666666663,
+                "y": 781.9999999999999
+            }
+        },
+        "Gold.json#monochrome_tilemap_packed": {
+            "scaleInDock": 1
+        },
+        "Gold.json#monochrome_tilemap_transparent_packed": {
+            "scaleInDock": 1
+        },
+        "Jackpot.tmx": {
+            "scale": 1,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 490,
+                "y": 199.5
+            }
+        },
+        "Jackpot.tmx#monochrome_tilemap_packed": {
+            "scaleInDock": 1.5
+        },
+        "Jackpot.tmx#monochrome_tilemap_transparent_packed": {
+            "scaleInDock": 1
+        }
+    },
+    "last.exportedFilePath": "C:/CMPM 120/ALL IN/assets",
+    "last.imagePath": "C:/CMPM 120/ALL IN/assets/kenney_1-bit-platformer-pack/Tilemap",
+    "map.height": 90,
+    "map.lastUsedExportFilter": "All Files (*)",
+    "map.lastUsedFormat": "json",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "map.width": 140,
+    "openFiles": [
+        "Jackpot.tmx",
+        "Gold.json"
+    ],
+    "project": "All In.tiled-project",
+    "property.type": "bool",
+    "recentFiles": [
+        "Gold.json",
+        "Jackpot.tmx",
+        "C:/CMPM 120/Pathfinder/assets/tiny-town-tileset.tmx",
+        "C:/CMPM 120/PlatformImprovement/assets/platformer-level-1.tmx"
+    ],
+    "tileset.embedInMap": true,
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}

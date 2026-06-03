@@ -1,0 +1,55 @@
+{
+    "activeFile": "assets/Jackpot.tmx",
+    "expandedProjectPaths": [
+        ".",
+        "assets"
+    ],
+    "fileStates": {
+        "": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Jackpot.tmx": {
+            "scale": 0.75,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 1220.6666666666665,
+                "y": 283.33333333333326
+            }
+        },
+        "Jackpot.tmx#monochrome_tilemap_packed": {
+            "scaleInDock": 1.5
+        },
+        "Jackpot.tmx#monochrome_tilemap_transparent_packed": {
+            "scaleInDock": 1
+        },
+        "assets/Jackpot.tmx": {
+            "expandedGroupLayers": [
+                7
+            ],
+            "scale": 1.5,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 301.6666666666667,
+                "y": 215.66666666666663
+            }
+        },
+        "assets/Jackpot.tmx#monochrome_tilemap_packed": {
+            "scaleInDock": 1
+        },
+        "assets/Jackpot.tmx#monochrome_tilemap_transparent_packed": {
+            "scaleInDock": 1
+        }
+    },
+    "last.exportedFilePath": "C:/CMPM 120/Platformer/assets",
+    "map.lastUsedExportFilter": "JSON map files (*.tmj *.json)",
+    "openFiles": [
+        "assets/Jackpot.tmx"
+    ],
+    "project": "All In.tiled-project",
+    "property.type": "bool",
+    "recentFiles": [
+        "assets/Jackpot.tmx",
+        "Jackpot.tmx"
+    ]
+}
