@@ -18,6 +18,7 @@ class Load extends Phaser.Scene {
         // Load tilemap information
         this.load.image("tilemap_packed", "kenney_1-bit-platformer-pack/Tilemap/monochrome_tilemap_packed.png");   // Packed tilemap
         this.load.image("tilemap_packed2", "kenney_1-bit-platformer-pack/Tilemap/monochrome_tilemap_transparent_packed.png");  // Packed tilemap (duplicate for multiatlas)
+        this.load.tilemapTiledJSON("Level3", "Dealer.json");
         this.load.tilemapTiledJSON("Level2", "Gold.json");
         this.load.tilemapTiledJSON("Level1", "Jackpot.json");   // Tilemap in JSON
 
@@ -86,7 +87,7 @@ class Load extends Phaser.Scene {
         });
 
          // ...and pass to the next Scene
-         this.scene.start("platformer2Scene");
+         this.scene.start("bossBattle");
 
     }
 

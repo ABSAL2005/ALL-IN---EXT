@@ -1,6 +1,6 @@
-class Platformer2 extends Phaser.Scene {
+class BossBattle extends Phaser.Scene {
     constructor() {
-        super("platformer2Scene");
+        super("bossBattle");
 
         this.eKey = null;
         this.jumpKey = null;
@@ -32,41 +32,10 @@ class Platformer2 extends Phaser.Scene {
         this.death = false;
     }
 
-    killEnemy(enemy) {
-        // Bounce the player up
-        my.sprite.player.body.setVelocityY(-400);
-
-        // Shrink and remove
-        this.tweens.add({
-            targets: enemy,
-            scaleX: 1.5,
-            scaleY: 0,
-            y: enemy.y + 8,
-            duration: 400,
-            onComplete: () => {
-                enemy.destroy();
-                let diamond = this.physics.add.sprite(enemy.x, enemy.y, "tilemap_sheet2", 62);
-                this.physics.add.collider(diamond, this.backgroundLayer);
-                this.physics.add.collider(diamond, this.platformLayer);
-                diamond.body.setAllowGravity(true);
-                diamond.body.setVelocityY(-500);
-                diamond.body.setBounce(0.7);
-
-                this.physics.add.overlap(my.sprite.player, diamond, (p, d) => {
-                    d.destroy();
-                    this.SCORE += 1;
-                    this.scoreText.setText(`Diamonds: ${this.SCORE}`);
-                });
-
-                this.time.delayedCall(5000, () => { if (diamond.active) diamond.destroy(); });
-            }
-        });
-    }
-
     mapCreation() {
         // Create a new tilemap game object which uses 16x16 pixel tiles, and is
-        // 45 tiles wide and 25 tiles tall.
-        this.map = this.add.tilemap("Level2", 16, 16, 45, 25);
+        // 50 tiles wide and 20 tiles tall.
+        this.map = this.add.tilemap("Level3", 16, 16, 50, 30);
 
         this.animatedTiles.init(this.map);
 
@@ -82,6 +51,31 @@ class Platformer2 extends Phaser.Scene {
             this.tileset,
             this.transparentTileset
         ]);
+
+        this.platformLayer = this.map.createLayer("Platforms", [
+            this.tileset,
+            this.transparentTileset
+        ]);
+
+        this.Parallax = this.map.createLayer("Parallax", [
+            this.tileset,
+            this.transparentTileset
+        ]);
+
+        this.Parallax2 = this.map.createLayer("Parallax2", [
+            this.tileset,
+            this.transparentTileset
+        ]);
+
+        this.Parallax3 = this.map.createLayer("Parallax3", [
+            this.tileset,
+            this.transparentTileset
+        ]);
+
+        this.Parallax.setScrollFactor(0.3);
+        this.Parallax2.setScrollFactor(0.5);
+        this.Parallax3.setScrollFactor(0.7);
+
         this.cameras.main.setZoom(2);
     }
 
@@ -136,35 +130,9 @@ class Platformer2 extends Phaser.Scene {
             key: "tilemap_sheet2",
             frame: 62
         });
-
-        this.door = this.map.createFromObjects("Objects", {
-            name: "door",
-            key: "tilemap_sheet",
-            frame: 56
-        });
-
-        this.blocks = this.map.createFromObjects("Objects", {
-            name: "block",
-            key: "tilemap_sheet",
-            frame: 48
-        });
-
-        this.physics.world.enable(this.door, Phaser.Physics.Arcade.STATIC_BODY);
-        this.doorGroup = this.add.group(this.door);
         
         this.physics.world.enable(this.coins, Phaser.Physics.Arcade.STATIC_BODY);
         this.coinGroup = this.add.group(this.coins);
-
-        this.physics.world.enable(this.blocks, Phaser.Physics.Arcade.STATIC_BODY);
-        this.blockGroup = this.add.group(this.blocks);
-
-        this.physics.add.overlap(my.sprite.player, this.doorGroup, () => {
-
-            this.scene.start("casinoScene", {
-                diamonds : this.SCORE
-            });
-
-        });
 
         this.physics.add.overlap(my.sprite.player, this.coinGroup, (obj1, obj2) => {
             obj2.destroy(); // remove coin on overlap
@@ -173,13 +141,6 @@ class Platformer2 extends Phaser.Scene {
             this.SCORE += 1;
             this.scoreText.setText(`Diamonds: ${this.SCORE}`);
         });        
-
-        this.physics.add.collider(my.sprite.player, this.blockGroup, (player, block) => {
-            if (player.body.blocked.up) {
-                this.breakBlock(block);
-                block.destroy();
-            }
-        });
 
         /// 
         /// VFX
@@ -226,10 +187,18 @@ class Platformer2 extends Phaser.Scene {
             collision: true
         });
 
+        this.groundLayer.setCollisionByProperty({ 
+            spring: true 
+        });
+
+        this.platformLayer.setCollisionByProperty({
+            collision: true
+        });
+
         // set up player avatar
         my.sprite.player = this.physics.add.sprite(
             this.map.tileToWorldX(2),
-            this.map.tileToWorldY(77),
+            this.map.tileToWorldY(5),
             "player_right"
         );
         my.sprite.player.setCollideWorldBounds(true);
@@ -245,7 +214,13 @@ class Platformer2 extends Phaser.Scene {
         this.cameras.main.roundPixels = true;
 
         // Enable collision handling
-        this.physics.add.collider(my.sprite.player, this.groundLayer);
+        this.physics.add.collider(my.sprite.player, this.groundLayer, (player, tile) => {
+            if (tile.properties && tile.properties.spring) {
+                player.body.setVelocityY(-750);  // adjust launch strength
+            }
+        });
+
+        this.physics.add.collider(my.sprite.player, this.platformLayer);
 
         this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
 
@@ -475,47 +450,5 @@ class Platformer2 extends Phaser.Scene {
                 noUpgradeText.destroy();
             });
         }
-    }
-
-    breakBlock(block) {
-        const numPieces = 6;
-
-        for (let i = 0; i < numPieces; i++) {
-            let piece = this.add.sprite(block.x, block.y, "tilemap_sheet", 48);
-            piece.setScale(0.5);
-
-            let angle = (i / numPieces) * Math.PI * 2;
-            let speed = Phaser.Math.Between(60, 140);
-            let vx = Math.cos(angle) * speed;
-            let vy = Math.sin(angle) * speed;
-
-            this.tweens.add({
-                targets: piece,
-                x: piece.x + vx,
-                y: piece.y + vy,
-                alpha: 0,
-                scale: Phaser.Math.FloatBetween(0.1, 0.3),
-                angle: Phaser.Math.Between(-180, 180),
-                duration: Phaser.Math.Between(300, 500),
-                ease: 'Power2',
-                onComplete: () => piece.destroy()
-            });
-        }
-
-        // Spawn diamond pickup
-        let diamond = this.physics.add.sprite(block.x, block.y, "tilemap_sheet2", 62);
-        this.physics.add.collider(diamond, this.backgroundLayer);
-        this.physics.add.collider(diamond, this.platformLayer);
-        diamond.body.setAllowGravity(true);
-        diamond.body.setVelocityY(-500);
-        diamond.body.setBounce(0.7);
-
-        this.physics.add.overlap(my.sprite.player, diamond, (p, d) => {
-            d.destroy();
-            this.SCORE += 1;
-            this.scoreText.setText(`Diamonds: ${this.SCORE}`);
-        });
-
-        this.time.delayedCall(5000, () => { if (diamond.active) diamond.destroy(); });
     }
 }

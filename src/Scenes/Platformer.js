@@ -148,10 +148,10 @@ class Platformer extends Phaser.Scene {
         const tileSize = 16;
 
         this.wheelTiles = [
-            this.add.image(-tileSize/2, -tileSize/2, "tilemap_sheet2", 287),
-            this.add.image(tileSize/2, -tileSize/2, "tilemap_sheet2", 288),
-            this.add.image(-tileSize/2, tileSize/2, "tilemap_sheet2", 307),
-            this.add.image(tileSize/2, tileSize/2, "tilemap_sheet2", 308),
+            this.add.image(-tileSize/2, -tileSize/2, "tilemap_sheet", 287),
+            this.add.image(tileSize/2, -tileSize/2, "tilemap_sheet", 288),
+            this.add.image(-tileSize/2, tileSize/2, "tilemap_sheet", 307),
+            this.add.image(tileSize/2, tileSize/2, "tilemap_sheet", 308),
         ];
 
         this.wheel.add(this.wheelTiles);
