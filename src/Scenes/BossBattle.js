@@ -306,12 +306,12 @@ class BossBattle extends Phaser.Scene {
         this.boss = new Boss(this, 9, 1);
 
         // Cards hit player → death
-        /*this.physics.add.overlap(my.sprite.player, this.boss.cards, (player, card) => {
+        this.physics.add.overlap(my.sprite.player, this.boss.cards, (player, card) => {
             card.destroy();
             if (this.death == false) {
                 this.deathAnim();
             }
-        });*/
+        });
 
         // Cards break breakable tiles, pass through everything else
         this.physics.add.collider(
@@ -350,7 +350,6 @@ class BossBattle extends Phaser.Scene {
     }
 
     updateBossStateLabel(stateName) {
-        // Optional — you can display state name for debugging
         console.log("Boss state:", stateName);
     }
 

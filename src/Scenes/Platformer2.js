@@ -63,6 +63,27 @@ class Platformer2 extends Phaser.Scene {
         });
     }
 
+    setPlayer() {
+        // set up player avatar
+        my.sprite.player = this.physics.add.sprite(
+            this.map.tileToWorldX(2),
+            this.map.tileToWorldY(25),
+            "player_right"
+        );
+        my.sprite.player.setCollideWorldBounds(true);
+        this.cameras.main.setBounds(
+            0,
+            0,
+            this.map.widthInPixels,
+            this.map.heightInPixels
+        );
+
+        this.cameras.main.startFollow(my.sprite.player, true, 0.1, 0.1);
+        this.cameras.main.setDeadzone(80, 60);
+        this.cameras.main.roundPixels = true;
+        my.sprite.player.setMaxVelocity(200, 1000);
+    }
+
     mapCreation() {
         // Create a new tilemap game object which uses 16x16 pixel tiles, and is
         // 45 tiles wide and 25 tiles tall.
@@ -85,49 +106,13 @@ class Platformer2 extends Phaser.Scene {
         this.cameras.main.setZoom(2);
     }
 
-    wheelCreation() {
-        this.wheel = this.add.container(380, 280);
+    collisionHandler() {
+        this.groundLayer.setCollisionByProperty({
+            collision: true
+        });
 
-        const tileSize = 16;
-
-        this.wheelTiles = [
-            this.add.image(-tileSize/2, -tileSize/2, "tilemap_sheet", 287),
-            this.add.image(tileSize/2, -tileSize/2, "tilemap_sheet", 288),
-            this.add.image(-tileSize/2, tileSize/2, "tilemap_sheet", 307),
-            this.add.image(tileSize/2, tileSize/2, "tilemap_sheet", 308),
-        ];
-
-        this.wheel.add(this.wheelTiles);
-
-        this.wheel.add(this.wheelTiles);
-        this.wheel.setScrollFactor(0);
-    }
-
-    textCreation() {
-        //
-        // SCORE TEXT
-        //
-        this.scoreText = this.add.bitmapText(
-            365,
-            230,
-            'kiwiSoda',
-            `Diamonds: ${this.SCORE}`,
-            16
-        );
-        this.scoreText.setScrollFactor(0);
-        this.scoreText.setDepth(1000);
-
-        //
-        // WHEEL SPIN TEXT
-        //
-        this.spinPrompt = this.add.bitmapText(
-            365, 
-            245, 
-            'kiwiSoda',
-            "Press E to spin (1 diamond)", 
-            16
-        );
-        this.spinPrompt.setScrollFactor(0);
+        // Enable collision handling
+        this.physics.add.collider(my.sprite.player, this.groundLayer);
     }
 
     objectHandler() {
@@ -215,49 +200,61 @@ class Platformer2 extends Phaser.Scene {
         });
     }
 
-    create() {
-        this.mapCreation();
-        this.wheelCreation();
-        this.textCreation();
+    wheelCreation() {
+        this.wheel = this.add.container(380, 280);
 
-        this.eKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+        const tileSize = 16;
 
-        this.groundLayer.setCollisionByProperty({
-            collision: true
-        });
+        this.wheelTiles = [
+            this.add.image(-tileSize/2, -tileSize/2, "tilemap_sheet", 287),
+            this.add.image(tileSize/2, -tileSize/2, "tilemap_sheet", 288),
+            this.add.image(-tileSize/2, tileSize/2, "tilemap_sheet", 307),
+            this.add.image(tileSize/2, tileSize/2, "tilemap_sheet", 308),
+        ];
 
-        // set up player avatar
-        my.sprite.player = this.physics.add.sprite(
-            this.map.tileToWorldX(2),
-            this.map.tileToWorldY(77),
-            "player_right"
+        this.wheel.add(this.wheelTiles);
+
+        this.wheel.add(this.wheelTiles);
+        this.wheel.setScrollFactor(0);
+    }
+
+    textCreation() {
+        //
+        // SCORE TEXT
+        //
+        this.scoreText = this.add.bitmapText(
+            365,
+            230,
+            'kiwiSoda',
+            `Diamonds: ${this.SCORE}`,
+            16
         );
-        my.sprite.player.setCollideWorldBounds(true);
-        this.cameras.main.setBounds(
-            0,
-            0,
-            this.map.widthInPixels,
-            this.map.heightInPixels
+        this.scoreText.setScrollFactor(0);
+        this.scoreText.setDepth(1000);
+
+        //
+        // WHEEL SPIN TEXT
+        //
+        this.spinPrompt = this.add.bitmapText(
+            365, 
+            245, 
+            'kiwiSoda',
+            "Press E to spin (1 diamond)", 
+            16
         );
+        this.spinPrompt.setScrollFactor(0);
+    }
 
-        this.cameras.main.startFollow(my.sprite.player, true, 0.1, 0.1);
-        this.cameras.main.setDeadzone(80, 60);
-        this.cameras.main.roundPixels = true;
-
-        // Enable collision handling
-        this.physics.add.collider(my.sprite.player, this.groundLayer);
-
-        this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-
-        my.sprite.player.setMaxVelocity(200, 1000);
-
-        cursors = this.input.keyboard.createCursorKeys();
-
-        this.objectHandler();
-
+    soundAndVFX() {
+        //
+        // SOUND
+        //
         this.walkingSound = this.sound.add("footstep", { volume: 0.2 });
         this.gamblingSound = this.sound.add("gambling", { volume: 0.5 });
 
+        //
+        // VFX
+        //
         // movement vfx
         this.walkingVfx = this.add.particles(0, 0, "kenny-particles", {
             frame: ['smoke_03.png', 'spark_03.png'],
@@ -273,8 +270,8 @@ class Platformer2 extends Phaser.Scene {
         this.walkingVfx.stop();
 
         this.jumpVFX = this.add.particles(0, -20, "kenny-particles", {
-            frame: ["muzzle_01.png" , "muzzle_02.png", "muzzle_03.png"],
-            scale: {start: 0.2, end: 0.05},
+            frame: ["flare_01.png"],
+            scale: {start: 1, end: 0.05},
             lifespan: 200,
             alpha: {start: 0.1, end: 0}, 
         });
@@ -283,7 +280,54 @@ class Platformer2 extends Phaser.Scene {
         this.jumpKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
     }
 
+    fanSetup() {
+        // Store fan tile positions for update loop to check
+        this.fanTiles = []
+        this.groundLayer.forEachTile(tile => {
+            if (!tile.properties || !tile.properties.fan) return
+            this.fanTiles.push({
+                x: tile.getCenterX(),
+                y: tile.getCenterY()
+            })
+        })
+    }
+
+    create() {
+        this.mapCreation();
+        this.wheelCreation();
+        this.textCreation();
+        this.setPlayer();
+        this.collisionHandler();
+        this.fanSetup();
+
+        this.eKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+
+        this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+
+        cursors = this.input.keyboard.createCursorKeys();
+
+        this.objectHandler();
+        this.soundAndVFX();
+    }
+
     update() {
+        // Check if player is in any fan wind zone
+        let inWind = false
+        for (const fan of this.fanTiles) {
+            const dx = Math.abs(my.sprite.player.x - fan.x)
+            const dy = my.sprite.player.y - fan.y  // positive = player is below fan
+            if (dx < 12 && dy < 0 && dy > -150) {  // within 150px above fan
+                inWind = true
+                break
+            }
+        }
+
+        if (inWind) {
+            my.sprite.player.body.setVelocityY(-600)
+        } else {
+            my.sprite.player.body.setAccelerationY(0)
+        }
+
         this.footstepCooldown -= this.game.loop.delta;
 
         if (my.sprite.player.y > this.map.heightInPixels - 50 && this.death == false) {
@@ -303,10 +347,47 @@ class Platformer2 extends Phaser.Scene {
     }
 
     deathAnim() {
-        my.sprite.player.setVelocityY(-700);
-        this.time.delayedCall(700, () => {
-        this.scene.start("loseScene");
-        });
+        this.death = true
+
+        // Stop player movement
+        my.sprite.player.body.setVelocity(0, 0)
+        my.sprite.player.body.setAccelerationX(0)
+        my.sprite.player.setVisible(false)
+
+        // Camera shake
+        this.cameras.main.shake(500, 0.02)
+
+        // Big explosion burst
+        let explosion = this.add.particles(my.sprite.player.x, my.sprite.player.y, "kenny-particles", {
+            frame: ['smoke_03.png', 'spark_03.png', 'star_08.png'],
+            speed: { min: 50, max: 200 },
+            angle: { min: 0, max: 360 },
+            scale: { start: 0.4, end: 0 },
+            alpha: { start: 1, end: 0 },
+            lifespan: { min: 400, max: 800 },
+            quantity: 30,
+            emitting: false
+        })
+        explosion.explode(60)
+
+        // Second delayed burst for layered effect
+        this.time.delayedCall(200, () => {
+            let explosion2 = this.add.particles(my.sprite.player.x, my.sprite.player.y, "kenny-particles", {
+                frame: ['muzzle_01.png', 'muzzle_02.png', 'muzzle_03.png'],
+                speed: { min: 30, max: 150 },
+                angle: { min: 0, max: 360 },
+                scale: { start: 0.3, end: 0 },
+                lifespan: 500,
+                quantity: 20,
+                emitting: false
+            })
+            explosion2.explode(40)
+        })
+
+        // Transition to lose scene after explosion
+        this.time.delayedCall(1200, () => {
+            this.scene.start("loseScene")
+        })
     }
 
     playerWalking() {
