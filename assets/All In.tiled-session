@@ -67,11 +67,11 @@
             "scaleInDock": 1
         },
         "Gold.json": {
-            "scale": 0.33,
+            "scale": 0.75,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 1069.6969696969697,
-                "y": 686.3636363636363
+                "x": 545.3333333333333,
+                "y": 980.6666666666667
             }
         },
         "Gold.json#monochrome_tilemap_packed": {
@@ -85,8 +85,8 @@
             "scale": 1,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 490,
-                "y": 199.5
+                "x": 953,
+                "y": 646.5
             }
         },
         "Jackpot.tmx#monochrome_tilemap_packed": {

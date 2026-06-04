@@ -32,6 +32,27 @@ class BossBattle extends Phaser.Scene {
         this.death = false;
     }
 
+    setPlayer() {
+        // set up player avatar
+        my.sprite.player = this.physics.add.sprite(
+            this.map.tileToWorldX(0),
+            this.map.tileToWorldY(25),
+            "player_right"
+        );
+        my.sprite.player.setCollideWorldBounds(true);
+        this.cameras.main.setBounds(
+            0,
+            0,
+            this.map.widthInPixels,
+            this.map.heightInPixels
+        );
+
+        this.cameras.main.startFollow(my.sprite.player, true, 0.1, 0.1);
+        this.cameras.main.setDeadzone(80, 60);
+        this.cameras.main.roundPixels = true;
+        my.sprite.player.setMaxVelocity(200, 1000);
+    }
+
     mapCreation() {
         // Create a new tilemap game object which uses 16x16 pixel tiles, and is
         // 50 tiles wide and 20 tiles tall.
@@ -79,49 +100,47 @@ class BossBattle extends Phaser.Scene {
         this.cameras.main.setZoom(2);
     }
 
-    wheelCreation() {
-        this.wheel = this.add.container(380, 280);
+    collisionHandler() {
+        this.groundLayer.setCollisionByProperty({
+            collision: true
+        });
 
-        const tileSize = 16;
+        this.groundLayer.setCollisionByProperty({ 
+            spring: true 
+        });
 
-        this.wheelTiles = [
-            this.add.image(-tileSize/2, -tileSize/2, "tilemap_sheet", 287),
-            this.add.image(tileSize/2, -tileSize/2, "tilemap_sheet", 288),
-            this.add.image(-tileSize/2, tileSize/2, "tilemap_sheet", 307),
-            this.add.image(tileSize/2, tileSize/2, "tilemap_sheet", 308),
-        ];
+        this.platformLayer.setCollisionByProperty({
+            collision: true
+        });
 
-        this.wheel.add(this.wheelTiles);
+        this.platformLayer.setCollisionByProperty({
+            oneway: true
+        });
 
-        this.wheel.add(this.wheelTiles);
-        this.wheel.setScrollFactor(0);
-    }
+        // Enable collision handling
+        this.physics.add.collider(my.sprite.player, this.groundLayer, (player, tile) => {
+            if (tile.properties && tile.properties.spring) {
+                if (cursors.down.isDown) {
+                    player.body.setVelocityY(-1000);  // stronger jump if holding down
+                } else {
+                    player.body.setVelocityY(-750);  // adjust launch strength
+                }
+            }
+        });
 
-    textCreation() {
-        //
-        // SCORE TEXT
-        //
-        this.scoreText = this.add.bitmapText(
-            365,
-            230,
-            'kiwiSoda',
-            `Diamonds: ${this.SCORE}`,
-            16
+        this.physics.add.collider(
+            my.sprite.player, 
+            this.platformLayer,
+            null,
+            (player, tile) => {
+                // return true = collide, false = pass through
+                if (tile.properties && tile.properties.oneway) {
+                    return player.body.velocity.y > 0 && !cursors.down.isDown;
+                }
+                return true;
+            },
+            this
         );
-        this.scoreText.setScrollFactor(0);
-        this.scoreText.setDepth(1000);
-
-        //
-        // WHEEL SPIN TEXT
-        //
-        this.spinPrompt = this.add.bitmapText(
-            365, 
-            245, 
-            'kiwiSoda',
-            "Press E to spin (1 diamond)", 
-            16
-        );
-        this.spinPrompt.setScrollFactor(0);
     }
 
     objectHandler() {
@@ -176,63 +195,61 @@ class BossBattle extends Phaser.Scene {
         });
     }
 
-    create() {
-        this.mapCreation();
-        this.wheelCreation();
-        this.textCreation();
+    wheelCreation() {
+        this.wheel = this.add.container(380, 280);
 
-        this.eKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+        const tileSize = 16;
 
-        this.groundLayer.setCollisionByProperty({
-            collision: true
-        });
+        this.wheelTiles = [
+            this.add.image(-tileSize/2, -tileSize/2, "tilemap_sheet", 287),
+            this.add.image(tileSize/2, -tileSize/2, "tilemap_sheet", 288),
+            this.add.image(-tileSize/2, tileSize/2, "tilemap_sheet", 307),
+            this.add.image(tileSize/2, tileSize/2, "tilemap_sheet", 308),
+        ];
 
-        this.groundLayer.setCollisionByProperty({ 
-            spring: true 
-        });
+        this.wheel.add(this.wheelTiles);
 
-        this.platformLayer.setCollisionByProperty({
-            collision: true
-        });
+        this.wheel.add(this.wheelTiles);
+        this.wheel.setScrollFactor(0);
+    }
 
-        // set up player avatar
-        my.sprite.player = this.physics.add.sprite(
-            this.map.tileToWorldX(0),
-            this.map.tileToWorldY(25),
-            "player_right"
+    textCreation() {
+        //
+        // SCORE TEXT
+        //
+        this.scoreText = this.add.bitmapText(
+            365,
+            230,
+            'kiwiSoda',
+            `Diamonds: ${this.SCORE}`,
+            16
         );
-        my.sprite.player.setCollideWorldBounds(true);
-        this.cameras.main.setBounds(
-            0,
-            0,
-            this.map.widthInPixels,
-            this.map.heightInPixels
+        this.scoreText.setScrollFactor(0);
+        this.scoreText.setDepth(1000);
+
+        //
+        // WHEEL SPIN TEXT
+        //
+        this.spinPrompt = this.add.bitmapText(
+            365, 
+            245, 
+            'kiwiSoda',
+            "Press E to spin (1 diamond)", 
+            16
         );
+        this.spinPrompt.setScrollFactor(0);
+    }
 
-        this.cameras.main.startFollow(my.sprite.player, true, 0.1, 0.1);
-        this.cameras.main.setDeadzone(80, 60);
-        this.cameras.main.roundPixels = true;
-
-        // Enable collision handling
-        this.physics.add.collider(my.sprite.player, this.groundLayer, (player, tile) => {
-            if (tile.properties && tile.properties.spring) {
-                player.body.setVelocityY(-750);  // adjust launch strength
-            }
-        });
-
-        this.physics.add.collider(my.sprite.player, this.platformLayer);
-
-        this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-
-        my.sprite.player.setMaxVelocity(200, 1000);
-
-        cursors = this.input.keyboard.createCursorKeys();
-
-        this.objectHandler();
-
+    soundAndVFX() {
+        //
+        // SOUND
+        //
         this.walkingSound = this.sound.add("footstep", { volume: 0.2 });
         this.gamblingSound = this.sound.add("gambling", { volume: 0.5 });
 
+        //
+        // VFX
+        //
         // movement vfx
         this.walkingVfx = this.add.particles(0, 0, "kenny-particles", {
             frame: ['smoke_03.png', 'spark_03.png'],
@@ -256,15 +273,62 @@ class BossBattle extends Phaser.Scene {
 
         this.jumpVFX.stop();
         this.jumpKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
+
+    }
+
+    bossSetup() {
+        // Spawn boss — adjust x/y to where you want it to start
+        this.boss = new Boss(this, 9, 1);
+
+        // Cards hit player → death
+        /*
+        this.physics.add.overlap(my.sprite.player, this.boss.cards, (player, card) => {
+            card.destroy();
+            if (this.death == false) {
+                this.deathAnim();
+            }
+        });
+        */
+        // Optional: boss collides with ground so it doesn't fall through
+        this.physics.add.collider(this.boss, this.groundLayer);
+        // Add this inside bossSetup(), after creating the boss
+        this.physics.add.overlap(my.sprite.player, this.boss, (player, boss) => {
+            // Only damage boss if player is falling onto it (stomping)
+            if (my.sprite.player.body.velocity.y > 0 && boss.isStunned) {
+                boss.takeDamage(50);
+                my.sprite.player.body.setVelocityY(-500); // bounce off
+            }
+        });
+    }
+
+    updateBossStateLabel(stateName) {
+        // Optional — you can display state name for debugging
+        console.log("Boss state:", stateName);
+    }
+
+    create() {
+        cursors = this.input.keyboard.createCursorKeys();
+
+        this.mapCreation();
+        this.wheelCreation();
+        this.textCreation();
+        this.setPlayer();
+        this.collisionHandler();
+        this.bossSetup();
+        this.updateBossStateLabel();
+
+        this.physics.world.TILE_BIAS = 17;
+
+        this.eKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+
+        this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+
+        this.objectHandler();
+        this.soundAndVFX();
     }
 
     update() {
         this.footstepCooldown -= this.game.loop.delta;
-
-        if (my.sprite.player.y > this.map.heightInPixels - 50 && this.death == false) {
-            this.death = true;
-            this.deathAnim();
-        }
 
         this.playerWalking();
         this.playerJumping();
@@ -275,6 +339,11 @@ class BossBattle extends Phaser.Scene {
         }
 
         this.crouch = cursors.down.isDown;
+
+        // Boss update
+        if (this.boss) {
+            this.boss.update(this.time, this.game.loop.delta);
+        }
     }
 
     deathAnim() {
