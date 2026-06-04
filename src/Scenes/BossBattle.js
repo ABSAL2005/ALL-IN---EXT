@@ -93,6 +93,17 @@ class BossBattle extends Phaser.Scene {
             this.transparentTileset
         ]);
 
+        this.breakableTiles = []
+        this.platformLayer.forEachTile(tile => {
+            if (tile.properties && tile.properties.breakable) {
+                this.breakableTiles.push({
+                    x: tile.x,
+                    y: tile.y,
+                    index: tile.index
+                })
+            }
+        })
+
         this.Parallax.setScrollFactor(0.3);
         this.Parallax2.setScrollFactor(0.5);
         this.Parallax3.setScrollFactor(0.7);
@@ -115,6 +126,10 @@ class BossBattle extends Phaser.Scene {
 
         this.platformLayer.setCollisionByProperty({
             oneway: true
+        });
+
+        this.platformLayer.setCollisionByProperty({
+            breakable: true
         });
 
         // Enable collision handling
@@ -265,7 +280,7 @@ class BossBattle extends Phaser.Scene {
         this.walkingVfx.stop();
 
         this.jumpVFX = this.add.particles(0, -20, "kenny-particles", {
-            frame: ["muzzle_01.png" , "muzzle_02.png", "muzzle_03.png"],
+            frame: ["flare_01.png"],
             scale: {start: 0.2, end: 0.05},
             lifespan: 200,
             alpha: {start: 0.1, end: 0}, 
@@ -281,21 +296,44 @@ class BossBattle extends Phaser.Scene {
         this.boss = new Boss(this, 9, 1);
 
         // Cards hit player → death
-        /*
         this.physics.add.overlap(my.sprite.player, this.boss.cards, (player, card) => {
             card.destroy();
             if (this.death == false) {
                 this.deathAnim();
             }
         });
-        */
-        // Optional: boss collides with ground so it doesn't fall through
+
+        // Cards break breakable tiles, pass through everything else
+        this.physics.add.collider(
+            this.boss.cards,
+            this.platformLayer,
+            (card, tile) => {
+                card.destroy()
+                const tileX = tile.x
+                const tileY = tile.y
+                const tileIndex = tile.index
+                this.platformLayer.removeTileAt(tileX, tileY)
+
+                // Respawn after 20 seconds
+                this.time.delayedCall(20000, () => {
+                    const newTile = this.platformLayer.putTileAt(tileIndex, tileX, tileY)
+                    newTile.setCollision(true)
+                    newTile.properties = { ...newTile.properties, breakable: true }
+                })
+            },
+            (card, tile) => {
+                return tile.properties && tile.properties.breakable
+            },
+            this
+        )
+
+        // boss collides with ground so it doesn't fall through
         this.physics.add.collider(this.boss, this.groundLayer);
-        // Add this inside bossSetup(), after creating the boss
+
         this.physics.add.overlap(my.sprite.player, this.boss, (player, boss) => {
             // Only damage boss if player is falling onto it (stomping)
             if (my.sprite.player.body.velocity.y > 0 && boss.isStunned) {
-                boss.takeDamage(50);
+                boss.takeDamage();
                 my.sprite.player.body.setVelocityY(-500); // bounce off
             }
         });
@@ -347,10 +385,47 @@ class BossBattle extends Phaser.Scene {
     }
 
     deathAnim() {
-        my.sprite.player.setVelocityY(-700);
-        this.time.delayedCall(700, () => {
-        this.scene.start("loseScene");
-        });
+        this.death = true
+
+        // Stop player movement
+        my.sprite.player.body.setVelocity(0, 0)
+        my.sprite.player.body.setAccelerationX(0)
+        my.sprite.player.setVisible(false)
+
+        // Camera shake
+        this.cameras.main.shake(500, 0.02)
+
+        // Big explosion burst
+        let explosion = this.add.particles(my.sprite.player.x, my.sprite.player.y, "kenny-particles", {
+            frame: ['smoke_03.png', 'spark_03.png', 'star_08.png'],
+            speed: { min: 50, max: 200 },
+            angle: { min: 0, max: 360 },
+            scale: { start: 0.4, end: 0 },
+            alpha: { start: 1, end: 0 },
+            lifespan: { min: 400, max: 800 },
+            quantity: 30,
+            emitting: false
+        })
+        explosion.explode(60)
+
+        // Second delayed burst for layered effect
+        this.time.delayedCall(200, () => {
+            let explosion2 = this.add.particles(my.sprite.player.x, my.sprite.player.y, "kenny-particles", {
+                frame: ['muzzle_01.png', 'muzzle_02.png', 'muzzle_03.png'],
+                speed: { min: 30, max: 150 },
+                angle: { min: 0, max: 360 },
+                scale: { start: 0.3, end: 0 },
+                lifespan: 500,
+                quantity: 20,
+                emitting: false
+            })
+            explosion2.explode(40)
+        })
+
+        // Transition to lose scene after explosion
+        this.time.delayedCall(1200, () => {
+            this.scene.start("loseScene")
+        })
     }
 
     playerWalking() {

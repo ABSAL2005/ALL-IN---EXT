@@ -296,8 +296,8 @@ class Boss extends Phaser.Physics.Arcade.Sprite {
             onComplete: () => {
                 this.setTexture('boss_idle')
 
-                // End stun after 4 seconds
-                this._stunTimer = this.scene.time.delayedCall(5000, () => {
+                // End stun after 3.5 seconds
+                this._stunTimer = this.scene.time.delayedCall(3500, () => {
                     this._endStun()
                 })
             }
