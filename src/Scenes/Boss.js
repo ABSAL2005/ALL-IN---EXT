@@ -374,6 +374,8 @@ class Boss extends Phaser.Physics.Arcade.Sprite {
     // ─── Death ────────────────────────────────────────────────────
 
     _doDeath() {
+        const scene = this.scene  // save before destroy
+
         this.setActive(false)
         this.body.stop()
         this.cards.clear(true, true)
@@ -392,9 +394,9 @@ class Boss extends Phaser.Physics.Arcade.Sprite {
         this.setVisible(false)
         this.destroy()
 
-        this.scene.time.delayedCall(5000, () => {
+        scene.time.delayedCall(1500, () => {
             emitter.destroy()
-            this.stateMachine.reset()
+            scene.scene.start('loseScene')
         })
     }
 

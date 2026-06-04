@@ -35,7 +35,7 @@ class BossBattle extends Phaser.Scene {
     setPlayer() {
         // set up player avatar
         my.sprite.player = this.physics.add.sprite(
-            this.map.tileToWorldX(0),
+            this.map.tileToWorldX(2),
             this.map.tileToWorldY(25),
             "player_right"
         );
@@ -88,11 +88,6 @@ class BossBattle extends Phaser.Scene {
             this.transparentTileset
         ]);
 
-        this.Parallax3 = this.map.createLayer("Parallax3", [
-            this.tileset,
-            this.transparentTileset
-        ]);
-
         this.breakableTiles = []
         this.platformLayer.forEachTile(tile => {
             if (tile.properties && tile.properties.breakable) {
@@ -106,7 +101,6 @@ class BossBattle extends Phaser.Scene {
 
         this.Parallax.setScrollFactor(0.3);
         this.Parallax2.setScrollFactor(0.5);
-        this.Parallax3.setScrollFactor(0.7);
 
         this.cameras.main.setZoom(2);
     }
@@ -118,6 +112,10 @@ class BossBattle extends Phaser.Scene {
 
         this.groundLayer.setCollisionByProperty({ 
             spring: true 
+        });
+
+        this.groundLayer.setCollisionByProperty({ 
+            fan: true 
         });
 
         this.platformLayer.setCollisionByProperty({
@@ -281,7 +279,7 @@ class BossBattle extends Phaser.Scene {
 
         this.jumpVFX = this.add.particles(0, -20, "kenny-particles", {
             frame: ["flare_01.png"],
-            scale: {start: 0.2, end: 0.05},
+            scale: {start: 1, end: 0.05},
             lifespan: 200,
             alpha: {start: 0.1, end: 0}, 
         });
@@ -291,17 +289,29 @@ class BossBattle extends Phaser.Scene {
 
     }
 
+    fanSetup() {
+        // Store fan tile positions for update loop to check
+        this.fanTiles = []
+        this.groundLayer.forEachTile(tile => {
+            if (!tile.properties || !tile.properties.fan) return
+            this.fanTiles.push({
+                x: tile.getCenterX(),
+                y: tile.getCenterY()
+            })
+        })
+    }
+
     bossSetup() {
         // Spawn boss — adjust x/y to where you want it to start
         this.boss = new Boss(this, 9, 1);
 
         // Cards hit player → death
-        this.physics.add.overlap(my.sprite.player, this.boss.cards, (player, card) => {
+        /*this.physics.add.overlap(my.sprite.player, this.boss.cards, (player, card) => {
             card.destroy();
             if (this.death == false) {
                 this.deathAnim();
             }
-        });
+        });*/
 
         // Cards break breakable tiles, pass through everything else
         this.physics.add.collider(
@@ -352,6 +362,7 @@ class BossBattle extends Phaser.Scene {
         this.textCreation();
         this.setPlayer();
         this.collisionHandler();
+        this.fanSetup();
         this.bossSetup();
         this.updateBossStateLabel();
 
@@ -366,6 +377,23 @@ class BossBattle extends Phaser.Scene {
     }
 
     update() {
+        // Check if player is in any fan wind zone
+        let inWind = false
+        for (const fan of this.fanTiles) {
+            const dx = Math.abs(my.sprite.player.x - fan.x)
+            const dy = my.sprite.player.y - fan.y  // positive = player is below fan
+            if (dx < 12 && dy < 0 && dy > -150) {  // within 150px above fan
+                inWind = true
+                break
+            }
+        }
+
+        if (inWind) {
+            my.sprite.player.body.setVelocityY(-600)
+        } else {
+            my.sprite.player.body.setAccelerationY(0)
+        }
+
         this.footstepCooldown -= this.game.loop.delta;
 
         this.playerWalking();
