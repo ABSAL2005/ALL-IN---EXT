@@ -43,6 +43,7 @@ class Load extends Phaser.Scene {
 
         this.load.audio("gambling", "kenney_casino-audio/Audio/dice-shake-1.ogg")
         this.load.audio("footstep", "kenney_impact-sounds/Audio/footstep_concrete_002.ogg")
+        this.load.audio("fart", "fart.ogg")
     }
 
     create() {
@@ -92,8 +93,9 @@ class Load extends Phaser.Scene {
             repeat: -1
         });
 
+
          // ...and pass to the next Scene
-         this.scene.start("bossBattle");
+         this.scene.start("platformer2Scene");
 
     }
 

@@ -22,7 +22,7 @@ let config = {
     },
     width: 1440,
     height: 900,
-    scene: [Load, BossBattle, Platformer2, Platformer, Lose, Casino, Boss]
+    scene: [Load, BossBattle, Platformer2, Platformer, Lose, Casino]
 }
 
 var cursors;

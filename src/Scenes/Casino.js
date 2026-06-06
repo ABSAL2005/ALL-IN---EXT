@@ -194,11 +194,11 @@ class Casino extends Phaser.Scene {
     checkResults(results) {
         if (results[0] === results[1] && results[1] === results[2]) {
             // JACKPOT — all match
-            this.infoText.setText("JACKPOT! PRESS R TO REPLAY");
+            this.infoText.setText("JACKPOT! PRESS R TO CONTINUE");
             this.jackpotDisplay();
-            this.rKey.once("down", () => this.scene.start("platformerScene"));
+            this.rKey.once("down", () => this.scene.start("platformer2Scene"));
         } else if (this.diamonds === 0) {
-            this.infoText.setText("GAME OVER - PRESS R TO RESTART");
+            this.infoText.setText("BUST - PRESS R TO RESTART");
             this.rKey.once("down", () => this.scene.start("platformerScene"));
         } else {
             this.infoText.setText("Try again!");

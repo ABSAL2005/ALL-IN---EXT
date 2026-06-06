@@ -20,7 +20,7 @@ class Lose extends Phaser.Scene {
 
         this.spaceKey.once("down", () => {
 
-            this.scene.start("platformerScene");
+            this.scene.start("platformer2Scene");
         });
     }
 }

@@ -16,7 +16,7 @@ class Platformer2 extends Phaser.Scene {
         this.DRAG = 1100;    // DRAG < ACCELERATION = icy slide
         this.JUMP_VELOCITY = -600;
         this.PARTICLE_VELOCITY = 50;
-        this.SCORE = 0;
+        this.SCORE = 100;
         this.footstepCooldown = 0;
         this.maxJumps = 1;
         this.jumpsLeft = 1;
@@ -30,6 +30,7 @@ class Platformer2 extends Phaser.Scene {
         this.centerY = this.cameras.main.height / 2;
         this.spinning = false;
         this.death = false;
+        this.canDash = false;
     }
 
     killEnemy(enemy) {
@@ -66,8 +67,8 @@ class Platformer2 extends Phaser.Scene {
     setPlayer() {
         // set up player avatar
         my.sprite.player = this.physics.add.sprite(
-            this.map.tileToWorldX(2),
-            this.map.tileToWorldY(25),
+            this.map.tileToWorldX(4),
+            this.map.tileToWorldY(24),
             "player_right"
         );
         my.sprite.player.setCollideWorldBounds(true);
@@ -103,6 +104,12 @@ class Platformer2 extends Phaser.Scene {
             this.tileset,
             this.transparentTileset
         ]);
+
+        this.platformLayer = this.map.createLayer("Platforms", [
+            this.tileset,
+            this.transparentTileset
+        ]);
+
         this.cameras.main.setZoom(2);
     }
 
@@ -111,8 +118,52 @@ class Platformer2 extends Phaser.Scene {
             collision: true
         });
 
+        this.groundLayer.setCollisionByProperty({ 
+            spring: true 
+        });
+
+        this.groundLayer.setCollisionByProperty({ 
+            death: true 
+        });
+
+        this.platformLayer.setCollisionByProperty({
+            oneway: true
+        });
+
         // Enable collision handling
-        this.physics.add.collider(my.sprite.player, this.groundLayer);
+        this.physics.add.collider(my.sprite.player, this.groundLayer, (player, tile) => {
+            if (tile.properties && tile.properties.spring) {
+                if (cursors.down.isDown) {
+                    player.body.setVelocityY(-1000);  // stronger jump if holding down
+                } else {
+                    player.body.setVelocityY(-750);  // adjust launch strength
+                }
+            }
+            if (tile.properties && tile.properties.spring2) {
+                my.sprite.player.setMaxVelocity(2000, 1000);
+                player.body.setVelocityX(15000);  // adjust launch strength
+                player.body.setDragX(1000)
+            } else {
+                my.sprite.player.setMaxVelocity(200, 1000);
+            }
+            if (tile.properties && tile.properties.death) {
+                this.deathAnim();
+            }
+        });
+
+        this.physics.add.collider(
+            my.sprite.player, 
+            this.platformLayer,
+            null,
+            (player, tile) => {
+                // return true = collide, false = pass through
+                if (tile.properties && tile.properties.oneway) {
+                    return player.body.velocity.y > 0 && !cursors.down.isDown;
+                }
+                return true;
+            },
+            this
+        );
     }
 
     objectHandler() {
@@ -175,7 +226,7 @@ class Platformer2 extends Phaser.Scene {
             lifespan: 500,
             scale: { start: 0.2, end: 0 },
             blendMode: 'ADD',
-            quantity: 1,
+            quantity: 3,
             emitting: false
         });
 
@@ -271,7 +322,7 @@ class Platformer2 extends Phaser.Scene {
 
         this.jumpVFX = this.add.particles(0, -20, "kenny-particles", {
             frame: ["flare_01.png"],
-            scale: {start: 1, end: 0.05},
+            scale: {start: 0.6, end: 0.05},
             lifespan: 200,
             alpha: {start: 0.1, end: 0}, 
         });
@@ -290,6 +341,15 @@ class Platformer2 extends Phaser.Scene {
                 y: tile.getCenterY()
             })
         })
+        this.fan2Tiles = []
+        this.groundLayer.forEachTile(tile => {
+            if (!tile.properties || !tile.properties.fan2) return
+            this.fan2Tiles.push({
+                x: tile.getCenterX(),
+                y: tile.getCenterY()
+            })
+        })
+
     }
 
     create() {
@@ -297,6 +357,8 @@ class Platformer2 extends Phaser.Scene {
         this.wheelCreation();
         this.textCreation();
         this.setPlayer();
+        this.abilities = new Abilities(this)
+        this.abilities._setupDash()
         this.collisionHandler();
         this.fanSetup();
 
@@ -314,19 +376,32 @@ class Platformer2 extends Phaser.Scene {
         // Check if player is in any fan wind zone
         let inWind = false
         for (const fan of this.fanTiles) {
-            const dx = Math.abs(my.sprite.player.x - fan.x)
-            const dy = my.sprite.player.y - fan.y  // positive = player is below fan
-            if (dx < 12 && dy < 0 && dy > -150) {  // within 150px above fan
+            const dx = my.sprite.player.x - fan.x  // positive = player is to the right
+            const dy = Math.abs(my.sprite.player.y - fan.y)
+            if (dx > 0 && dx < 150 && dy < 12) {  // within 150px to the right, same height
                 inWind = true
                 break
             }
         }
 
-        if (inWind) {
+        this.inWind = inWind  // store for playerWalking to use
+
+        let inWind2 = false
+        for (const fan2 of this.fan2Tiles) {
+            const dx = Math.abs(my.sprite.player.x - fan2.x)
+            const dy = my.sprite.player.y - fan2.y  // positive = player is below fan
+            if (dx < 12 && dy < 0 && dy > -150) {  // within 150px above fan
+                inWind2 = true
+                break
+            }
+        }
+
+        if (inWind2) {
             my.sprite.player.body.setVelocityY(-600)
         } else {
             my.sprite.player.body.setAccelerationY(0)
         }
+
 
         this.footstepCooldown -= this.game.loop.delta;
 
@@ -335,9 +410,16 @@ class Platformer2 extends Phaser.Scene {
             this.deathAnim();
         }
 
+        this.abilities.update()
+
         this.playerWalking();
         this.playerJumping();
         this.playerCrouching();
+
+        // Apply fan wind on top of player movement
+        if (this.inWind) {
+            my.sprite.player.body.acceleration.x += 100  // push right, adjust strength
+        }
 
         if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
             this.trySpinWheel();
@@ -384,6 +466,8 @@ class Platformer2 extends Phaser.Scene {
             explosion2.explode(40)
         })
 
+        my.sprite.player.body.destroy();
+
         // Transition to lose scene after explosion
         this.time.delayedCall(1200, () => {
             this.scene.start("loseScene")
@@ -391,8 +475,11 @@ class Platformer2 extends Phaser.Scene {
     }
 
     playerWalking() {
+        const goLeft = this.abilities.isReversed() ? cursors.right.isDown : cursors.left.isDown
+        const goRight = this.abilities.isReversed() ? cursors.left.isDown : cursors.right.isDown
+
         if (!this.crouch) {
-            if(cursors.left.isDown && this.death == false) {
+            if(goLeft && this.death == false) {
                 // TODO: have the player acce
                 // this.physics.world.drawDebug = true;
                 my.sprite.player.body.setAccelerationX(-this.ACCELERATION);
@@ -409,7 +496,7 @@ class Platformer2 extends Phaser.Scene {
                     }
                 }
 
-            } else if(cursors.right.isDown && this.death == false) {
+            } else if(goRight && this.death == false) {
                 // TODO: have the player accelerate to the right
                 my.sprite.player.body.setAccelerationX(this.ACCELERATION);
                 my.sprite.player.resetFlip(true, false);
@@ -513,6 +600,7 @@ class Platformer2 extends Phaser.Scene {
 
                 my.sprite.player.body.setVelocityY(this.JUMP_VELOCITY);
                 this.jumpsLeft--;
+                this.abilities.onJump()  // fart jump
 
                 // spawn jump particles on player's feet
                 this.jumpVFX.setPosition(my.sprite.player.x, my.sprite.player.y);
@@ -522,40 +610,38 @@ class Platformer2 extends Phaser.Scene {
     }
 
     finishWheelSpin() {
+        this.spinning = false
+        this.canSpinWheel = true
 
-        this.spinning = false;
+        // Higher weight = more likely to appear
+        const weightedAbilities = [
+            { name: 'doubleJump',       weight: 1500 },
+            { name: 'magnet',           weight: 15 },
+            { name: 'fartJump',         weight: 15 },
+            { name: 'dash',             weight: 12 },
+            { name: 'iceSkates',        weight: 10 },
+            { name: 'reverseControls',  weight: 10 },
+            { name: 'invulnerability',  weight: 10  },
+            { name: 'diceShot',         weight: 8  },
+            { name: 'bankrupt',         weight: 5  },
+        ]
 
-        let result = Phaser.Math.Between(1, 1);
+        // Calculate total weight
+        const totalWeight = weightedAbilities.reduce((sum, a) => sum + a.weight, 0)
 
-        if (result === 1 && this.maxJumps === 1) {
+        // Pick random number and walk down the list
+        let roll = Phaser.Math.Between(1, totalWeight)
+        let picked = weightedAbilities[0].name
 
-            this.maxJumps = 2;
-
-            let doubleJumpText = this.add.bitmapText(
-                this.centerX, 
-                this.centerY, 
-                'kiwiSoda',
-                "DOUBLE JUMP!",
-                30
-            ).setScrollFactor(0);
-            this.time.delayedCall(1800, () => {
-                //remove text after delay
-                doubleJumpText.destroy();
-            });
-        } else {
-
-            let noUpgradeText = this.add.bitmapText(
-                this.centerX, 
-                this.centerY, 
-                'kiwiSoda',
-                "NO UPGRADE",
-                30
-            ).setScrollFactor(0);
-            this.time.delayedCall(1800, () => {
-                //remove text after delay
-                noUpgradeText.destroy();
-            });
+        for (const ability of weightedAbilities) {
+            roll -= ability.weight
+            if (roll <= 0) {
+                picked = ability.name
+                break
+            }
         }
+
+        this.abilities.apply(picked)
     }
 
     breakBlock(block) {
