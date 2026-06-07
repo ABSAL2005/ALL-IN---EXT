@@ -24,25 +24,14 @@ class Abilities {
                 break
 
             case 'invulnerability':
-                //s.sound.play('yayyy')
-                if (this.cooldowns.invulnerability) return
-                this.active.invulnerable = true
-                this.cooldowns.invulnerability = true
-                this._showText('INVULNERABLE!')
-                player.setTint(0xffdd00)
-                s.time.delayedCall(5000, () => {
-                    this.active.invulnerable = false
-                    player.clearTint()
-                })
-                s.time.delayedCall(30000, () => {
-                    this.cooldowns.invulnerability = false
-                })
+                this.active.invulnerabilityCharges = (this.active.invulnerabilityCharges || 0) + 1
+                this._showText(`INVULNERABILITY x${this.active.invulnerabilityCharges}! (X)`)
                 break
 
             case 'dash':
                 //s.sound.play('yayyy')
                 this.canDash = true
-                this._showText('DASH! (>>/<<)')
+                this._showText('BLINK! (>>/<<)')
                 break
 
             case 'diceShot':
@@ -77,6 +66,11 @@ class Abilities {
                 s.scoreText.setText(`Diamonds: 0`)
                 this._showText('BANKRUPT!')
                 break
+
+            case 'blank':
+                //s.sound.play('awww')
+                this._showText('BLANKED!')
+                break
         }
     }
 
@@ -107,7 +101,7 @@ class Abilities {
     // Call from playerJumping() when a jump happens
     onJump() {
         if (this.active.fartJump) {
-            this.scene.sound.play('fart', { volume: 0.4 })
+            this.scene.sound.play('fart', { volume: 0.4, rate: 1.5 })
         }
     }
 
@@ -159,6 +153,16 @@ class Abilities {
             dice.body.setAllowGravity(false)
             dice.setVelocityX(facingRight ? 300 : -300)
 
+            // Kill enemies on hit
+            if (this.scene.enemies) {
+                this.scene.enemies.forEach(enemy => {
+                    this.scene.physics.add.overlap(dice, enemy, () => {
+                        if (dice.active) dice.destroy()
+                        if (enemy.active) this.scene.killEnemy(enemy, false)
+                    })
+                })
+            }
+
             // Destroy dice on hitting ground layer
             this.scene.physics.add.collider(dice, this.scene.groundLayer, () => {
                 dice.destroy()
@@ -169,6 +173,37 @@ class Abilities {
 
             this.cooldowns.diceShot = true
             this.scene.time.delayedCall(500, () => { this.cooldowns.diceShot = false })
+        })
+    }
+
+    activateInvulnerability() {
+        if (!this.active.invulnerabilityCharges || this.active.invulnerabilityCharges <= 0) return
+        if (this.active.invulnerable) return  // already active, don't stack duration
+
+        this.active.invulnerabilityCharges -= 1
+        this.active.invulnerable = true
+
+        const player = my.sprite.player
+        player.setTint(0xffdd00)
+        this._showText(`INVULNERABLE! (${this.active.invulnerabilityCharges} left)`)
+
+        // Flash the player repeatedly for 3 seconds
+        let flashes = 0
+        const flashEvent = this.scene.time.addEvent({
+            delay: 150,
+            loop: true,
+            callback: () => {
+                flashes++
+                player.setAlpha(flashes % 2 === 0 ? 1 : 0.3)
+                player.setTint(flashes % 2 === 0 ? 0xffffff : 0xffdd00)
+            }
+        })
+
+        this.scene.time.delayedCall(5000, () => {
+            this.active.invulnerable = false
+            flashEvent.remove()
+            player.setAlpha(1)
+            player.clearTint()
         })
     }
 

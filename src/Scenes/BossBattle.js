@@ -10,13 +10,13 @@ class BossBattle extends Phaser.Scene {
         this.load.scenePlugin('AnimatedTiles', './lib/AnimatedTiles.js', 'animatedTiles', 'animatedTiles');
     }
 
-    init() {
+    init(data) {
         // variables and settings
         this.ACCELERATION = 800;
         this.DRAG = 1100;    // DRAG < ACCELERATION = icy slide
         this.JUMP_VELOCITY = -600;
         this.PARTICLE_VELOCITY = 50;
-        this.SCORE = 0;
+        this.SCORE = data?.diamonds || 0
         this.footstepCooldown = 0;
         this.maxJumps = 1;
         this.jumpsLeft = 1;
@@ -30,6 +30,7 @@ class BossBattle extends Phaser.Scene {
         this.centerY = this.cameras.main.height / 2;
         this.spinning = false;
         this.death = false;
+        this.incomingAbilities = data?.abilities || {}
     }
 
     setPlayer() {
@@ -308,8 +309,8 @@ class BossBattle extends Phaser.Scene {
         // Cards hit player → death
         this.physics.add.overlap(my.sprite.player, this.boss.cards, (player, card) => {
             card.destroy();
-            if (this.death == false) {
-                this.deathAnim();
+            if (!this.death && !this.abilities?.active?.invulnerable) {
+                this.deathAnim()
             }
         });
 
@@ -360,6 +361,13 @@ class BossBattle extends Phaser.Scene {
         this.wheelCreation();
         this.textCreation();
         this.setPlayer();
+        this.abilities = new Abilities(this)
+        this.abilities._setupDash()
+        this.xKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X)
+
+        // Restore from previous scene
+        Object.assign(this.abilities.active, this.incomingAbilities)
+        if (this.abilities.active.canDash) this.abilities.canDash = true
         this.collisionHandler();
         this.fanSetup();
         this.bossSetup();
@@ -405,6 +413,11 @@ class BossBattle extends Phaser.Scene {
 
         this.crouch = cursors.down.isDown;
 
+        this.abilities.update()
+        if (Phaser.Input.Keyboard.JustDown(this.xKey)) {
+            this.abilities.activateInvulnerability()
+        }
+
         // Boss update
         if (this.boss) {
             this.boss.update(this.time, this.game.loop.delta);
@@ -412,6 +425,8 @@ class BossBattle extends Phaser.Scene {
     }
 
     deathAnim() {
+        if (this.abilities?.active?.invulnerable) return
+        if (this.death) return
         this.death = true
 
         // Stop player movement
@@ -456,8 +471,11 @@ class BossBattle extends Phaser.Scene {
     }
 
     playerWalking() {
+        const goLeft = this.abilities.isReversed() ? cursors.right.isDown : cursors.left.isDown
+        const goRight = this.abilities.isReversed() ? cursors.left.isDown : cursors.right.isDown
+
         if (!this.crouch) {
-            if(cursors.left.isDown && this.death == false) {
+            if(goLeft && this.death == false) {
                 // TODO: have the player acce
                 // this.physics.world.drawDebug = true;
                 my.sprite.player.body.setAccelerationX(-this.ACCELERATION);
@@ -474,7 +492,7 @@ class BossBattle extends Phaser.Scene {
                     }
                 }
 
-            } else if(cursors.right.isDown && this.death == false) {
+            } else if(goRight && this.death == false) {
                 // TODO: have the player accelerate to the right
                 my.sprite.player.body.setAccelerationX(this.ACCELERATION);
                 my.sprite.player.resetFlip(true, false);
@@ -578,6 +596,7 @@ class BossBattle extends Phaser.Scene {
 
                 my.sprite.player.body.setVelocityY(this.JUMP_VELOCITY);
                 this.jumpsLeft--;
+                this.abilities.onJump()  // fart jump
 
                 // spawn jump particles on player's feet
                 this.jumpVFX.setPosition(my.sprite.player.x, my.sprite.player.y);
@@ -587,39 +606,23 @@ class BossBattle extends Phaser.Scene {
     }
 
     finishWheelSpin() {
+        this.spinning = false
+        this.canSpinWheel = true
 
-        this.spinning = false;
+        const weightedAbilities = [
+            { name: 'blank',           weight: 70 },
+            { name: 'invulnerability', weight: 30 },
+        ]
 
-        let result = Phaser.Math.Between(1, 1);
+        const totalWeight = weightedAbilities.reduce((sum, a) => sum + a.weight, 0)
+        let roll = Phaser.Math.Between(1, totalWeight)
+        let picked = weightedAbilities[0].name
 
-        if (result === 1 && this.maxJumps === 1) {
-
-            this.maxJumps = 2;
-
-            let doubleJumpText = this.add.bitmapText(
-                this.centerX, 
-                this.centerY, 
-                'kiwiSoda',
-                "DOUBLE JUMP!",
-                30
-            ).setScrollFactor(0);
-            this.time.delayedCall(1800, () => {
-                //remove text after delay
-                doubleJumpText.destroy();
-            });
-        } else {
-
-            let noUpgradeText = this.add.bitmapText(
-                this.centerX, 
-                this.centerY, 
-                'kiwiSoda',
-                "NO UPGRADE",
-                30
-            ).setScrollFactor(0);
-            this.time.delayedCall(1800, () => {
-                //remove text after delay
-                noUpgradeText.destroy();
-            });
+        for (const ability of weightedAbilities) {
+            roll -= ability.weight
+            if (roll <= 0) { picked = ability.name; break }
         }
+
+        this.abilities.apply(picked)
     }
 }

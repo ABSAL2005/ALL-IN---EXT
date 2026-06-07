@@ -67,11 +67,14 @@
             "scaleInDock": 1
         },
         "Gold.json": {
-            "scale": 0.75,
-            "selectedLayer": 2,
+            "expandedObjectLayers": [
+                4
+            ],
+            "scale": 1,
+            "selectedLayer": 3,
             "viewCenter": {
-                "x": 680,
-                "y": 659.3333333333333
+                "x": 492.5,
+                "y": 1112
             }
         },
         "Gold.json#monochrome_tilemap_packed": {

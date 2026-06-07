@@ -5,10 +5,12 @@ class Casino extends Phaser.Scene {
 
     init(data) {
         this.diamonds = data.diamonds || 0;
+        this.abilitiesData = data.abilities || {}
         this.spaceKey = null; 
         this.rKey = null;
         this.reelHeight = 80;
         this.reelSpinning = false;
+        this.nextScene = data.nextScene || 'platformer2Scene'
     }
 
     create() {
@@ -196,7 +198,12 @@ class Casino extends Phaser.Scene {
             // JACKPOT — all match
             this.infoText.setText("JACKPOT! PRESS R TO CONTINUE");
             this.jackpotDisplay();
-            this.rKey.once("down", () => this.scene.start("platformer2Scene"));
+            this.rKey.once("down", () => {
+                this.scene.start(this.nextScene, {
+                    diamonds: this.diamonds,
+                    abilities: this.abilitiesData
+                })
+            });
         } else if (this.diamonds === 0) {
             this.infoText.setText("BUST - PRESS R TO RESTART");
             this.rKey.once("down", () => this.scene.start("platformerScene"));

@@ -30,6 +30,7 @@ class Platformer extends Phaser.Scene {
         this.centerY = this.cameras.main.height / 2;
         this.spinning = false;
         this.death = false;
+        this.incomingAbilities = {}
     }
 
     createEnemy(x, y, minX, maxX) {
@@ -50,8 +51,9 @@ class Platformer extends Phaser.Scene {
             if (player.body.velocity.y > 0 && player.body.bottom <= enemy.y + 10) {
                 this.killEnemy(enemy);
             } else {
-                this.death = true;
-                this.deathAnim();
+                if (!this.abilities?.active?.invulnerable) {
+                    this.deathAnim()
+                }
             }
         });
     }
@@ -218,7 +220,9 @@ class Platformer extends Phaser.Scene {
         this.physics.add.overlap(my.sprite.player, this.doorGroup, () => {
 
             this.scene.start("casinoScene", {
-                diamonds : this.SCORE
+                diamonds : this.SCORE,
+                abilities: this.abilities?.active || {},
+                nextScene: 'platformer2Scene'
             });
 
         });
@@ -251,6 +255,41 @@ class Platformer extends Phaser.Scene {
             emitting: false
         });
 
+    }
+
+    soundAndVFX() {
+        //
+        // SOUND
+        //
+        this.walkingSound = this.sound.add("footstep", { volume: 0.2 });
+        this.gamblingSound = this.sound.add("gambling", { volume: 0.5 });
+
+        //
+        // VFX
+        //
+        // movement vfx
+        this.walkingVfx = this.add.particles(0, 0, "kenny-particles", {
+            frame: ['smoke_03.png', 'spark_03.png'],
+            random: true,
+            scale: {start: 0.03, end: 0.1},
+            lifespan: 350,
+            gravityY: -200,
+            alpha: {start: 1, end: 0.1}, 
+        });
+
+        this.walkingVfx.startFollow(my.sprite.player, 0, 0, false);
+        this.walkingVfx.setParticleSpeed(this.PARTICLE_VELOCITY, 0);
+        this.walkingVfx.stop();
+
+        this.jumpVFX = this.add.particles(0, -20, "kenny-particles", {
+            frame: ["flare_01.png"],
+            scale: {start: 0.6, end: 0.05},
+            lifespan: 200,
+            alpha: {start: 0.1, end: 0}, 
+        });
+
+        this.jumpVFX.stop();
+        this.jumpKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
     }
 
     create() {
@@ -295,6 +334,9 @@ class Platformer extends Phaser.Scene {
 
         this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
 
+        this.abilities = new Abilities(this)
+        this.abilities._setupDash()
+
         this.objectHandler();
 
         // have the player collide with the platform layer, but only on the top side
@@ -307,43 +349,12 @@ class Platformer extends Phaser.Scene {
             }
         );
 
-        this.walkingSound = this.sound.add("footstep", { volume: 0.2 });
-
         // set up Phaser-provided cursor key input
         cursors = this.input.keyboard.createCursorKeys();
 
-        // debug key listener (assigned to D key)
-        this.input.keyboard.on('keydown-D', () => {
-            this.physics.world.drawDebug = this.physics.world.drawDebug ? false : true
-            this.physics.world.debugGraphic.clear()
-        }, this);
-
         my.sprite.player.setMaxVelocity(200, 1000);
 
-        // movement vfx
-        this.walkingVfx = this.add.particles(0, 0, "kenny-particles", {
-            frame: ['smoke_03.png', 'spark_03.png'],
-            random: true,
-            scale: {start: 0.03, end: 0.1},
-            lifespan: 350,
-            gravityY: -200,
-            alpha: {start: 1, end: 0.1}, 
-        });
-
-        this.walkingVfx.startFollow(my.sprite.player, 0, 0, false);
-        this.walkingVfx.setParticleSpeed(this.PARTICLE_VELOCITY, 0);
-        this.walkingVfx.stop();
-
-        this.jumpVFX = this.add.particles(0, -20, "kenny-particles", {
-            frame: ["muzzle_01.png" , "muzzle_02.png", "muzzle_03.png"],
-            scale: {start: 0.2, end: 0.05},
-            lifespan: 200,
-            alpha: {start: 0.1, end: 0}, 
-        });
-
-        this.jumpVFX.stop();
-        this.jumpKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
-        this.gamblingSound = this.sound.add("gambling", { volume: 0.5 });
+        this.soundAndVFX();
 
         this.coinFrames = [62, 82];
         this.coinFrameIndex = 0;
@@ -362,6 +373,8 @@ class Platformer extends Phaser.Scene {
             }
         });
 
+        this.xKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X)
+
         this.createEnemy(1400, 220, 1100, 1800);
     }
 
@@ -369,7 +382,6 @@ class Platformer extends Phaser.Scene {
         this.footstepCooldown -= this.game.loop.delta;
 
         if (my.sprite.player.y > this.map.heightInPixels - 50 && this.death == false) {
-            this.death = true;
             this.deathAnim();
         }
 
@@ -381,21 +393,71 @@ class Platformer extends Phaser.Scene {
             this.trySpinWheel();
         }
 
+        this.abilities.update()
+
+        if (Phaser.Input.Keyboard.JustDown(this.xKey)) {
+            this.abilities.activateInvulnerability()
+        }
+
         this.crouch = cursors.down.isDown;
 
         this.updateEnemy();
     }
 
     deathAnim() {
-        my.sprite.player.setVelocityY(-700);
-        this.time.delayedCall(700, () => {
-        this.scene.start("loseScene");
-        });
+        if (this.abilities?.active?.invulnerable) return  // blocked!
+        if (this.death) return
+        this.death = true
+
+        // Stop player movement
+        my.sprite.player.body.setVelocity(0, 0)
+        my.sprite.player.body.setAccelerationX(0)
+        my.sprite.player.setVisible(false)
+
+        // Camera shake
+        this.cameras.main.shake(500, 0.02)
+
+        // Big explosion burst
+        let explosion = this.add.particles(my.sprite.player.x, my.sprite.player.y, "kenny-particles", {
+            frame: ['smoke_03.png', 'spark_03.png', 'star_08.png'],
+            speed: { min: 50, max: 200 },
+            angle: { min: 0, max: 360 },
+            scale: { start: 0.4, end: 0 },
+            alpha: { start: 1, end: 0 },
+            lifespan: { min: 400, max: 800 },
+            quantity: 30,
+            emitting: false
+        })
+        explosion.explode(60)
+
+        // Second delayed burst for layered effect
+        this.time.delayedCall(200, () => {
+            let explosion2 = this.add.particles(my.sprite.player.x, my.sprite.player.y, "kenny-particles", {
+                frame: ['muzzle_01.png', 'muzzle_02.png', 'muzzle_03.png'],
+                speed: { min: 30, max: 150 },
+                angle: { min: 0, max: 360 },
+                scale: { start: 0.3, end: 0 },
+                lifespan: 500,
+                quantity: 20,
+                emitting: false
+            })
+            explosion2.explode(40)
+        })
+
+        my.sprite.player.body.destroy();
+
+        // Transition to lose scene after explosion
+        this.time.delayedCall(1200, () => {
+            this.scene.start("loseScene")
+        })
     }
 
     playerWalking() {
+        const goLeft = this.abilities.isReversed() ? cursors.right.isDown : cursors.left.isDown
+        const goRight = this.abilities.isReversed() ? cursors.left.isDown : cursors.right.isDown
+
         if (!this.crouch) {
-            if(cursors.left.isDown && this.death == false) {
+            if(goLeft && this.death == false) {
                 // TODO: have the player acce
                 // this.physics.world.drawDebug = true;
                 my.sprite.player.body.setAccelerationX(-this.ACCELERATION);
@@ -412,7 +474,7 @@ class Platformer extends Phaser.Scene {
                     }
                 }
 
-            } else if(cursors.right.isDown && this.death == false) {
+            } else if(goRight && this.death == false) {
                 // TODO: have the player accelerate to the right
                 my.sprite.player.body.setAccelerationX(this.ACCELERATION);
                 my.sprite.player.resetFlip(true, false);
@@ -516,6 +578,7 @@ class Platformer extends Phaser.Scene {
 
                 my.sprite.player.body.setVelocityY(this.JUMP_VELOCITY);
                 this.jumpsLeft--;
+                this.abilities.onJump()  // fart jump
 
                 // spawn jump particles on player's feet
                 this.jumpVFX.setPosition(my.sprite.player.x, my.sprite.player.y);
@@ -525,40 +588,39 @@ class Platformer extends Phaser.Scene {
     }
 
     finishWheelSpin() {
+        this.spinning = false
+        this.canSpinWheel = true
 
-        this.spinning = false;
+        // Higher weight = more likely to appear
+        const weightedAbilities = [
+            { name: 'blank',       weight: 130 },
+            { name: 'doubleJump',       weight: 15 },
+            { name: 'magnet',           weight: 15 },
+            { name: 'fartJump',         weight: 15 },
+            { name: 'dash',             weight: 12 },
+            { name: 'iceSkates',        weight: 10 },
+            { name: 'reverseControls',  weight: 10 },
+            { name: 'invulnerability',  weight: 10 },
+            { name: 'diceShot',         weight: 8  },
+            { name: 'bankrupt',         weight: 5  },
+        ]
 
-        let result = Phaser.Math.Between(1, 1);
+        // Calculate total weight
+        const totalWeight = weightedAbilities.reduce((sum, a) => sum + a.weight, 0)
 
-        if (result === 1 && this.maxJumps === 1) {
+        // Pick random number and walk down the list
+        let roll = Phaser.Math.Between(1, totalWeight)
+        let picked = weightedAbilities[0].name
 
-            this.maxJumps = 2;
-
-            let doubleJumpText = this.add.bitmapText(
-                this.centerX, 
-                this.centerY, 
-                'kiwiSoda',
-                "DOUBLE JUMP!",
-                30
-            ).setScrollFactor(0);
-            this.time.delayedCall(1800, () => {
-                //remove text after delay
-                doubleJumpText.destroy();
-            });
-        } else {
-
-            let noUpgradeText = this.add.bitmapText(
-                this.centerX, 
-                this.centerY, 
-                'kiwiSoda',
-                "NO UPGRADE",
-                30
-            ).setScrollFactor(0);
-            this.time.delayedCall(1800, () => {
-                //remove text after delay
-                noUpgradeText.destroy();
-            });
+        for (const ability of weightedAbilities) {
+            roll -= ability.weight
+            if (roll <= 0) {
+                picked = ability.name
+                break
+            }
         }
+
+        this.abilities.apply(picked)
     }
 
     breakBlock(block) {

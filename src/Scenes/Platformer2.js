@@ -10,13 +10,14 @@ class Platformer2 extends Phaser.Scene {
         this.load.scenePlugin('AnimatedTiles', './lib/AnimatedTiles.js', 'animatedTiles', 'animatedTiles');
     }
 
-    init() {
+    init(data) {
         // variables and settings
         this.ACCELERATION = 800;
         this.DRAG = 1100;    // DRAG < ACCELERATION = icy slide
         this.JUMP_VELOCITY = -600;
         this.PARTICLE_VELOCITY = 50;
-        this.SCORE = 100;
+        this.incomingAbilities = data?.abilities || {}
+        this.SCORE = data?.diamonds
         this.footstepCooldown = 0;
         this.maxJumps = 1;
         this.jumpsLeft = 1;
@@ -31,13 +32,56 @@ class Platformer2 extends Phaser.Scene {
         this.spinning = false;
         this.death = false;
         this.canDash = false;
+        this.enemies = []
     }
 
-    killEnemy(enemy) {
-        // Bounce the player up
-        my.sprite.player.body.setVelocityY(-400);
+    createEnemy(x, y, minX, maxX, speed) {
+        let enemy = this.physics.add.sprite(x, y, "tilemap_sheet", 380)
+        enemy.body.setCollideWorldBounds(true)
+        enemy.body.setAllowGravity(false)
+        enemy.setMaxVelocity(120, 1000)
+        enemy.body.setVelocityX(speed)
+        enemy.minX = minX
+        enemy.maxX = maxX
+        enemy.speed = speed
+        enemy.direction = 1
 
-        // Shrink and remove
+        this.physics.add.collider(enemy, this.groundLayer)
+        this.physics.add.collider(enemy, this.platformLayer)
+
+        this.physics.add.overlap(my.sprite.player, enemy, (player, e) => {
+            if (player.body.velocity.y > 0 && player.body.bottom <= e.y + 10) {
+                this.killEnemy(e)
+            } else {
+                if (!this.abilities?.active?.invulnerable) {
+                    this.deathAnim()
+                }
+            }
+        })
+
+        this.enemies.push(enemy)
+    }
+
+    updateEnemies() {
+        this.enemies.forEach(enemy => {
+            if (enemy.x >= enemy.maxX) {
+                enemy.direction = -1
+                enemy.setFlip(true, false)
+            } else if (enemy.x <= enemy.minX) {
+                enemy.direction = 1
+                enemy.resetFlip()
+            }
+            enemy.body.setVelocityX(enemy.speed * enemy.direction)
+        })
+    }
+
+    killEnemy(enemy, bounce = true) {
+        this.enemies = this.enemies.filter(e => e !== enemy)
+        if (bounce) {
+            my.sprite.player.body.setVelocityY(-400);
+        }
+        enemy.body.enable = false
+
         this.tweens.add({
             targets: enemy,
             scaleX: 1.5,
@@ -45,30 +89,27 @@ class Platformer2 extends Phaser.Scene {
             y: enemy.y + 8,
             duration: 400,
             onComplete: () => {
-                enemy.destroy();
-                let diamond = this.physics.add.sprite(enemy.x, enemy.y, "tilemap_sheet2", 62);
-                this.physics.add.collider(diamond, this.backgroundLayer);
-                this.physics.add.collider(diamond, this.platformLayer);
-                diamond.body.setAllowGravity(true);
-                diamond.body.setVelocityY(-500);
-                diamond.body.setBounce(0.7);
-
+                enemy.destroy()
+                let diamond = this.physics.add.sprite(enemy.x, enemy.y, "tilemap_sheet2", 62)
+                this.physics.add.collider(diamond, this.groundLayer)
+                diamond.body.setAllowGravity(true)
+                diamond.body.setVelocityY(-300)
+                diamond.body.setBounce(0.5)
                 this.physics.add.overlap(my.sprite.player, diamond, (p, d) => {
-                    d.destroy();
-                    this.SCORE += 1;
-                    this.scoreText.setText(`Diamonds: ${this.SCORE}`);
-                });
-
-                this.time.delayedCall(5000, () => { if (diamond.active) diamond.destroy(); });
+                    d.destroy()
+                    this.SCORE += 1
+                    this.scoreText.setText(`Diamonds: ${this.SCORE}`)
+                })
+                this.time.delayedCall(5000, () => { if (diamond.active) diamond.destroy() })
             }
-        });
+        })
     }
 
     setPlayer() {
         // set up player avatar
         my.sprite.player = this.physics.add.sprite(
-            this.map.tileToWorldX(4),
-            this.map.tileToWorldY(24),
+            this.map.tileToWorldX(2),
+            this.map.tileToWorldY(77),
             "player_right"
         );
         my.sprite.player.setCollideWorldBounds(true);
@@ -100,6 +141,16 @@ class Platformer2 extends Phaser.Scene {
             this.transparentTileset
         ]);
 
+        this.parallax = this.map.createLayer("Parallax", [
+            this.tileset,
+            this.transparentTileset
+        ]);
+
+        this.background = this.map.createLayer("Background", [
+            this.tileset,
+            this.transparentTileset
+        ]);
+
         this.groundLayer = this.map.createLayer("Ground", [
             this.tileset,
             this.transparentTileset
@@ -110,6 +161,9 @@ class Platformer2 extends Phaser.Scene {
             this.transparentTileset
         ]);
 
+        this.parallax.setScrollFactor(0.6);
+        this.parallax.setTint(0x66aaff);
+        this.parallax.setAlpha(0.7);        
         this.cameras.main.setZoom(2);
     }
 
@@ -197,7 +251,9 @@ class Platformer2 extends Phaser.Scene {
         this.physics.add.overlap(my.sprite.player, this.doorGroup, () => {
 
             this.scene.start("casinoScene", {
-                diamonds : this.SCORE
+                diamonds : this.SCORE,
+                abilities: this.abilities?.active || {},
+                nextScene: 'bossBattle'
             });
 
         });
@@ -359,10 +415,21 @@ class Platformer2 extends Phaser.Scene {
         this.setPlayer();
         this.abilities = new Abilities(this)
         this.abilities._setupDash()
+
+        // Restore abilities from previous scene
+        Object.assign(this.abilities.active, this.incomingAbilities)
+        if (this.abilities.active.canDash) this.abilities.canDash = true
+
         this.collisionHandler();
         this.fanSetup();
 
+        this.createEnemy(488, 656, 100, 488, 90)
+        this.createEnemy(1320, 456, 1064, 1320, 90)
+        this.createEnemy(1736, 350, 1400, 1736, 80)
+        this.createEnemy(1128, 936, 1150, 1570, 120)
+
         this.eKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+        this.xKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X)
 
         this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
 
@@ -370,9 +437,16 @@ class Platformer2 extends Phaser.Scene {
 
         this.objectHandler();
         this.soundAndVFX();
+
+        this.debugText = this.add.bitmapText(365, 260, 'kiwiSoda', '', 16)
+            .setScrollFactor(0)
+            .setDepth(2000)
+
     }
 
     update() {
+        this.debugText.setText(`x:${Math.floor(my.sprite.player.x)} y:${Math.floor(my.sprite.player.y)}`)
+
         // Check if player is in any fan wind zone
         let inWind = false
         for (const fan of this.fanTiles) {
@@ -425,10 +499,17 @@ class Platformer2 extends Phaser.Scene {
             this.trySpinWheel();
         }
 
+        if (Phaser.Input.Keyboard.JustDown(this.xKey)) {
+            this.abilities.activateInvulnerability()
+        }
+
         this.crouch = cursors.down.isDown;
+        this.updateEnemies()
     }
 
     deathAnim() {
+        if (this.abilities?.active?.invulnerable) return  // blocked!
+        if (this.death) return
         this.death = true
 
         // Stop player movement
@@ -615,13 +696,14 @@ class Platformer2 extends Phaser.Scene {
 
         // Higher weight = more likely to appear
         const weightedAbilities = [
-            { name: 'doubleJump',       weight: 1500 },
+            { name: 'blank',       weight: 130 },
+            { name: 'doubleJump',       weight: 15 },
             { name: 'magnet',           weight: 15 },
             { name: 'fartJump',         weight: 15 },
             { name: 'dash',             weight: 12 },
             { name: 'iceSkates',        weight: 10 },
             { name: 'reverseControls',  weight: 10 },
-            { name: 'invulnerability',  weight: 10  },
+            { name: 'invulnerability',  weight: 10 },
             { name: 'diceShot',         weight: 8  },
             { name: 'bankrupt',         weight: 5  },
         ]
