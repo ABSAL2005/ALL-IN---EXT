@@ -43,7 +43,21 @@ class Load extends Phaser.Scene {
 
         this.load.audio("gambling", "kenney_casino-audio/Audio/dice-shake-1.ogg")
         this.load.audio("footstep", "kenney_impact-sounds/Audio/footstep_concrete_002.ogg")
+        this.load.audio("block", "kenney_impact-sounds/Audio/impactPunch_heavy_004.ogg")
         this.load.audio("fart", "fart.ogg")
+        this.load.audio("titleSong", "Audio/title.mp3")
+        this.load.audio("bossSong", "Audio/boss.mp3")
+        this.load.audio("yay", "Audio/yay.mp3")
+        this.load.audio("aw", "Audio/aw.mp3")
+        this.load.audio("jump", "Audio/jump.mp3")
+        this.load.audio("coin", "Audio/coin.mp3")
+        this.load.audio("dead", "Audio/dead.mp3")
+        this.load.audio("casino", "Audio/casino.mp3")
+        this.load.audio("win", "Audio/jackpotwin.mp3")
+        this.load.audio("cardshot", "Audio/cardshot.mp3")
+        this.load.audio("death", "Audio/death.mp3")
+        this.load.audio("dice", "Audio/dice.mp3")
+
     }
 
     create() {

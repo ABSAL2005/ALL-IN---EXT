@@ -11,6 +11,7 @@ class Casino extends Phaser.Scene {
         this.reelHeight = 80;
         this.reelSpinning = false;
         this.nextScene = data.nextScene || 'platformer2Scene'
+        console.log("Casino received:", data.abilities);
     }
 
     create() {
@@ -85,6 +86,8 @@ class Casino extends Phaser.Scene {
         ).setOrigin(0.5, 0.5).setDepth(20);
 
         this.gamblingSound = this.sound.add("gambling", { volume: 0.5 });
+        this.casinoSound = this.sound.add("casino", {volume: 2});
+        this.casinoSound.play();
 
         this.spaceKey = this.input.keyboard.addKey(
             Phaser.Input.Keyboard.KeyCodes.SPACE
@@ -129,6 +132,8 @@ class Casino extends Phaser.Scene {
         if (this.reelSpinning == true) {
             this.infoText.setText(".....");
         }
+
+        console.log("Casino sending:", this.abilitiesData);
     }
 
     spinReels() {
@@ -198,7 +203,9 @@ class Casino extends Phaser.Scene {
             // JACKPOT — all match
             this.infoText.setText("JACKPOT! PRESS R TO CONTINUE");
             this.jackpotDisplay();
+            this.sound.play("win");
             this.rKey.once("down", () => {
+                this.casinoSound.stop();
                 this.scene.start(this.nextScene, {
                     diamonds: this.diamonds,
                     abilities: this.abilitiesData
@@ -206,7 +213,10 @@ class Casino extends Phaser.Scene {
             });
         } else if (this.diamonds === 0) {
             this.infoText.setText("BUST - PRESS R TO RESTART");
-            this.rKey.once("down", () => this.scene.start("platformerScene"));
+            this.rKey.once("down", () => {
+                this.casinoSound.stop();
+                this.scene.start("platformerScene")
+            });
         } else {
             this.infoText.setText("Try again!");
             this.canSpin = true;

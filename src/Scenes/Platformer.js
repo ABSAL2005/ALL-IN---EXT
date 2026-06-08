@@ -31,38 +31,44 @@ class Platformer extends Phaser.Scene {
         this.spinning = false;
         this.death = false;
         this.incomingAbilities = {}
+        this.enemies = []
     }
 
-    createEnemy(x, y, minX, maxX) {
-        this.enemyMinX = minX;
-        this.enemyMaxX = maxX;
+    createEnemy(x, y, minX, maxX, speed) {
+        let enemy = this.physics.add.sprite(x, y, "tilemap_sheet", 380)
+        enemy.body.setCollideWorldBounds(true)
+        enemy.body.setAllowGravity(false)
+        enemy.setMaxVelocity(120, 1000)
+        enemy.body.setVelocityX(speed)
+        enemy.minX = minX
+        enemy.maxX = maxX
+        enemy.speed = speed
+        enemy.direction = 1
 
-        this.enemy = this.physics.add.sprite(x, y, "tilemap_sheet");
-        this.enemy.setFrame(380);
-        this.enemy.body.setCollideWorldBounds(true);
-        this.enemy.body.setAllowGravity(false);
-        this.enemy.setMaxVelocity(80, 1000);
-        this.enemy.body.setVelocityX(this.enemySpeed);
+        this.physics.add.collider(enemy, this.groundLayer)
+        this.physics.add.collider(enemy, this.platformLayer)
 
-        this.physics.add.collider(this.enemy, this.backgroundLayer);
-        this.physics.add.collider(this.enemy, this.platformLayer);
-
-        this.physics.add.overlap(my.sprite.player, this.enemy, (player, enemy) => {
-            if (player.body.velocity.y > 0 && player.body.bottom <= enemy.y + 10) {
-                this.killEnemy(enemy);
+        this.physics.add.overlap(my.sprite.player, enemy, (player, e) => {
+            if (player.body.velocity.y > 0 && player.body.bottom <= e.y + 10) {
+                this.killEnemy(e)
             } else {
                 if (!this.abilities?.active?.invulnerable) {
                     this.deathAnim()
                 }
             }
-        });
+        })
+
+        this.enemies.push(enemy)
     }
 
-    killEnemy(enemy) {
-        // Bounce the player up
-        my.sprite.player.body.setVelocityY(-400);
+    killEnemy(enemy, bounce = true) {
+        this.enemies = this.enemies.filter(e => e !== enemy)
+        if (bounce) {
+            my.sprite.player.body.setVelocityY(-400);
+        }
+        enemy.body.enable = false
+        this.sound.play("dead", {rate: 2})
 
-        // Shrink and remove
         this.tweens.add({
             targets: enemy,
             scaleX: 1.5,
@@ -70,38 +76,36 @@ class Platformer extends Phaser.Scene {
             y: enemy.y + 8,
             duration: 400,
             onComplete: () => {
-                enemy.destroy();
-                let diamond = this.physics.add.sprite(enemy.x, enemy.y, "tilemap_sheet2", 62);
-                this.physics.add.collider(diamond, this.backgroundLayer);
-                this.physics.add.collider(diamond, this.platformLayer);
-                diamond.body.setAllowGravity(true);
-                diamond.body.setVelocityY(-500);
-                diamond.body.setBounce(0.7);
-
+                enemy.destroy()
+                let diamond = this.physics.add.sprite(enemy.x, enemy.y, "tilemap_sheet2", 62)
+                this.physics.add.collider(diamond, this.backgroundLayer)
+                diamond.body.setAllowGravity(true)
+                diamond.body.setVelocityY(-300)
+                diamond.body.setBounce(0.5)
                 this.physics.add.overlap(my.sprite.player, diamond, (p, d) => {
-                    d.destroy();
-                    this.SCORE += 1;
-                    this.scoreText.setText(`Diamonds: ${this.SCORE}`);
-                });
-
-                this.time.delayedCall(5000, () => { if (diamond.active) diamond.destroy(); });
+                    d.destroy()
+                    this.SCORE += 1
+                    this.sound.play("coin");
+                    this.coinParticles.setPosition(d.x, d.y);
+                    this.coinParticles.explode();
+                    this.scoreText.setText(`Diamonds: ${this.SCORE}`)
+                })
+                this.time.delayedCall(5000, () => { if (diamond.active) diamond.destroy() })
             }
-        });
+        })
     }
 
-
-    updateEnemy() {
-        if (!this.enemy || !this.enemy.active) return;
-
-        if (this.enemy.x >= this.enemyMaxX) {
-            this.enemySpeed = -60;
-            this.enemy.setFlip(true, false);
-        } else if (this.enemy.x <= this.enemyMinX) {
-            this.enemySpeed = 60;
-            this.enemy.resetFlip();
-        }
-        this.enemy.body.setVelocityX(this.enemySpeed);
-        this.enemy.anims.play('enemyWalk', true);
+    updateEnemies() {
+        this.enemies.forEach(enemy => {
+            if (enemy.x >= enemy.maxX) {
+                enemy.direction = -1
+                enemy.setFlip(true, false)
+            } else if (enemy.x <= enemy.minX) {
+                enemy.direction = 1
+                enemy.resetFlip()
+            }
+            enemy.body.setVelocityX(enemy.speed * enemy.direction)
+        })
     }
 
     mapCreation() {
@@ -140,7 +144,11 @@ class Platformer extends Phaser.Scene {
         ]);
 
         this.paralax1.setScrollFactor(0.5);
+        this.paralax1.setTint(0x66aaff);
+        this.paralax1.setAlpha(0.7);        
         this.paralax2.setScrollFactor(0.7);
+        this.paralax2.setTint(0x66aaff);
+        this.paralax2.setAlpha(0.7);        
         this.cameras.main.setZoom(2);
     }
 
@@ -229,9 +237,10 @@ class Platformer extends Phaser.Scene {
 
         this.physics.add.overlap(my.sprite.player, this.coinGroup, (obj1, obj2) => {
             obj2.destroy(); // remove coin on overlap
-            coinParticles.setPosition(obj2.x, obj2.y);
-            coinParticles.explode();
+            this.coinParticles.setPosition(obj2.x, obj2.y);
+            this.coinParticles.explode();
             this.SCORE += 1;
+            this.sound.play("coin");
             this.scoreText.setText(`Diamonds: ${this.SCORE}`);
         });        
 
@@ -245,13 +254,13 @@ class Platformer extends Phaser.Scene {
         /// 
         /// VFX
         ///
-        let coinParticles = this.add.particles(0, 0, "kenny-particles", {
+        this.coinParticles = this.add.particles(0, 0, "kenny-particles", {
             frame: 'star_08.png',
             speed: {min: 20, max: 50},
             lifespan: 500,
             scale: { start: 0.2, end: 0 },
             blendMode: 'ADD',
-            quantity: 1,
+            quantity: 3,
             emitting: false
         });
 
@@ -375,7 +384,7 @@ class Platformer extends Phaser.Scene {
 
         this.xKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X)
 
-        this.createEnemy(1400, 220, 1100, 1800);
+        this.createEnemy(1400, 220, 1100, 1800, 80);
     }
 
     update() {
@@ -401,7 +410,7 @@ class Platformer extends Phaser.Scene {
 
         this.crouch = cursors.down.isDown;
 
-        this.updateEnemy();
+        this.updateEnemies();
     }
 
     deathAnim() {
@@ -416,6 +425,7 @@ class Platformer extends Phaser.Scene {
 
         // Camera shake
         this.cameras.main.shake(500, 0.02)
+        this.sound.play("death")
 
         // Big explosion burst
         let explosion = this.add.particles(my.sprite.player.x, my.sprite.player.y, "kenny-particles", {
@@ -517,15 +527,36 @@ class Platformer extends Phaser.Scene {
         this.cameras.main.shake(150, 0.01);
 
         // wheel spin animation
+        // Store original wheel position first (in create() when you make the wheel)
+        this.wheelOriginalX = this.wheel.x
+        this.wheelOriginalY = this.wheel.y
+
+        // Then in trySpinWheel():
         this.tweens.add({
             targets: this.wheel,
-            angle: "360*3",
-            duration: 1400,
+            x: this.cameras.main.width / 2,
+            y: this.cameras.main.height / 2,
+            scaleX: 3,
+            scaleY: 3,
+            angle: "+=360*8",
+            duration: 1500,
             ease: "Cubic.easeOut",
             onComplete: () => {
-                this.finishWheelSpin();
+                // Shrink back to original position
+                this.tweens.add({
+                    targets: this.wheel,
+                    x: this.wheelOriginalX,
+                    y: this.wheelOriginalY,
+                    scaleX: 1,
+                    scaleY: 1,
+                    duration: 600,
+                    ease: 'Back.easeIn',
+                    onComplete: () => {
+                        this.finishWheelSpin()
+                    }
+                })
             }
-        });
+        })
 
         this.canSpinWheel = false;
 
@@ -556,7 +587,7 @@ class Platformer extends Phaser.Scene {
     }
 
     playerJumping() {
-                // player jump
+        // player jump
         // note that we need body.blocked rather than body.touching b/c the former applies to tilemap tiles and the latter to the "ground"
         // reset when grounded
         const isGrounded = my.sprite.player.body.blocked.down;
@@ -583,6 +614,7 @@ class Platformer extends Phaser.Scene {
                 // spawn jump particles on player's feet
                 this.jumpVFX.setPosition(my.sprite.player.x, my.sprite.player.y);
                 this.jumpVFX.explode(8);
+                this.sound.play("jump", {volume: 0.2});
             }
         }
     }
@@ -593,7 +625,7 @@ class Platformer extends Phaser.Scene {
 
         // Higher weight = more likely to appear
         const weightedAbilities = [
-            { name: 'blank',       weight: 130 },
+            { name: 'blank',            weight: 100},
             { name: 'doubleJump',       weight: 15 },
             { name: 'magnet',           weight: 15 },
             { name: 'fartJump',         weight: 15 },
@@ -601,7 +633,7 @@ class Platformer extends Phaser.Scene {
             { name: 'iceSkates',        weight: 10 },
             { name: 'reverseControls',  weight: 10 },
             { name: 'invulnerability',  weight: 10 },
-            { name: 'diceShot',         weight: 8  },
+            { name: 'diceShot',         weight: 8000000  },
             { name: 'bankrupt',         weight: 5  },
         ]
 
@@ -625,6 +657,8 @@ class Platformer extends Phaser.Scene {
 
     breakBlock(block) {
         const numPieces = 6;
+        this.sound.play("block");
+        this.cameras.main.shake(50, 0.01)
 
         for (let i = 0; i < numPieces; i++) {
             let piece = this.add.sprite(block.x, block.y, "tilemap_sheet", 48);
@@ -659,6 +693,9 @@ class Platformer extends Phaser.Scene {
         this.physics.add.overlap(my.sprite.player, diamond, (p, d) => {
             d.destroy();
             this.SCORE += 1;
+            this.sound.play("coin");
+            this.coinParticles.setPosition(d.x, d.y);
+            this.coinParticles.explode();
             this.scoreText.setText(`Diamonds: ${this.SCORE}`);
         });
 

@@ -17,7 +17,7 @@ class Platformer2 extends Phaser.Scene {
         this.JUMP_VELOCITY = -600;
         this.PARTICLE_VELOCITY = 50;
         this.incomingAbilities = data?.abilities || {}
-        this.SCORE = data?.diamonds
+        this.SCORE = data?.diamonds || 0;
         this.footstepCooldown = 0;
         this.maxJumps = 1;
         this.jumpsLeft = 1;
@@ -81,6 +81,7 @@ class Platformer2 extends Phaser.Scene {
             my.sprite.player.body.setVelocityY(-400);
         }
         enemy.body.enable = false
+        this.sound.play("dead", {rate: 2})
 
         this.tweens.add({
             targets: enemy,
@@ -98,6 +99,9 @@ class Platformer2 extends Phaser.Scene {
                 this.physics.add.overlap(my.sprite.player, diamond, (p, d) => {
                     d.destroy()
                     this.SCORE += 1
+                    this.sound.play("coin");
+                    this.coinParticles.setPosition(d.x, d.y);
+                    this.coinParticles.explode();
                     this.scoreText.setText(`Diamonds: ${this.SCORE}`)
                 })
                 this.time.delayedCall(5000, () => { if (diamond.active) diamond.destroy() })
@@ -108,7 +112,7 @@ class Platformer2 extends Phaser.Scene {
     setPlayer() {
         // set up player avatar
         my.sprite.player = this.physics.add.sprite(
-            this.map.tileToWorldX(2),
+            this.map.tileToWorldX(4),
             this.map.tileToWorldY(77),
             "player_right"
         );
@@ -260,9 +264,10 @@ class Platformer2 extends Phaser.Scene {
 
         this.physics.add.overlap(my.sprite.player, this.coinGroup, (obj1, obj2) => {
             obj2.destroy(); // remove coin on overlap
-            coinParticles.setPosition(obj2.x, obj2.y);
-            coinParticles.explode();
+            this.coinParticles.setPosition(obj2.x, obj2.y);
+            this.coinParticles.explode();
             this.SCORE += 1;
+            this.sound.play("coin");
             this.scoreText.setText(`Diamonds: ${this.SCORE}`);
         });        
 
@@ -276,7 +281,7 @@ class Platformer2 extends Phaser.Scene {
         /// 
         /// VFX
         ///
-        let coinParticles = this.add.particles(0, 0, "kenny-particles", {
+        this.coinParticles = this.add.particles(0, 0, "kenny-particles", {
             frame: 'star_08.png',
             speed: {min: 20, max: 50},
             lifespan: 500,
@@ -418,7 +423,21 @@ class Platformer2 extends Phaser.Scene {
 
         // Restore abilities from previous scene
         Object.assign(this.abilities.active, this.incomingAbilities)
-        if (this.abilities.active.canDash) this.abilities.canDash = true
+        if (this.abilities.active.canDash) {
+            this.abilities.canDash = true
+        }
+
+        if (this.abilities.active.canDiceShot) {
+            this.abilities._setupDiceShot()
+        }
+
+        if (this.abilities.active.doubleJump) {
+            this.maxJumps = 2
+        }
+
+        if (this.abilities.active.iceSkates) {
+            this.DRAG = 100
+        }
 
         this.collisionHandler();
         this.fanSetup();
@@ -437,16 +456,9 @@ class Platformer2 extends Phaser.Scene {
 
         this.objectHandler();
         this.soundAndVFX();
-
-        this.debugText = this.add.bitmapText(365, 260, 'kiwiSoda', '', 16)
-            .setScrollFactor(0)
-            .setDepth(2000)
-
     }
 
     update() {
-        this.debugText.setText(`x:${Math.floor(my.sprite.player.x)} y:${Math.floor(my.sprite.player.y)}`)
-
         // Check if player is in any fan wind zone
         let inWind = false
         for (const fan of this.fanTiles) {
@@ -480,7 +492,6 @@ class Platformer2 extends Phaser.Scene {
         this.footstepCooldown -= this.game.loop.delta;
 
         if (my.sprite.player.y > this.map.heightInPixels - 50 && this.death == false) {
-            this.death = true;
             this.deathAnim();
         }
 
@@ -505,6 +516,8 @@ class Platformer2 extends Phaser.Scene {
 
         this.crouch = cursors.down.isDown;
         this.updateEnemies()
+
+        console.log("Leaving Platformer2:", this.abilities.active);
     }
 
     deathAnim() {
@@ -519,6 +532,7 @@ class Platformer2 extends Phaser.Scene {
 
         // Camera shake
         this.cameras.main.shake(500, 0.02)
+        this.sound.play("death")
 
         // Big explosion burst
         let explosion = this.add.particles(my.sprite.player.x, my.sprite.player.y, "kenny-particles", {
@@ -620,15 +634,36 @@ class Platformer2 extends Phaser.Scene {
         this.cameras.main.shake(150, 0.01);
 
         // wheel spin animation
+        // Store original wheel position first (in create() when you make the wheel)
+        this.wheelOriginalX = this.wheel.x
+        this.wheelOriginalY = this.wheel.y
+
+        // Then in trySpinWheel():
         this.tweens.add({
             targets: this.wheel,
-            angle: "360*3",
-            duration: 1400,
+            x: this.cameras.main.width / 2,
+            y: this.cameras.main.height / 2,
+            scaleX: 3,
+            scaleY: 3,
+            angle: "+=360*8",
+            duration: 1500,
             ease: "Cubic.easeOut",
             onComplete: () => {
-                this.finishWheelSpin();
+                // Shrink back to original position
+                this.tweens.add({
+                    targets: this.wheel,
+                    x: this.wheelOriginalX,
+                    y: this.wheelOriginalY,
+                    scaleX: 1,
+                    scaleY: 1,
+                    duration: 600,
+                    ease: 'Back.easeIn',
+                    onComplete: () => {
+                        this.finishWheelSpin()
+                    }
+                })
             }
-        });
+        })
 
         this.canSpinWheel = false;
 
@@ -686,6 +721,7 @@ class Platformer2 extends Phaser.Scene {
                 // spawn jump particles on player's feet
                 this.jumpVFX.setPosition(my.sprite.player.x, my.sprite.player.y);
                 this.jumpVFX.explode(8);
+                this.sound.play("jump", {volume: 0.2});
             }
         }
     }
@@ -696,7 +732,7 @@ class Platformer2 extends Phaser.Scene {
 
         // Higher weight = more likely to appear
         const weightedAbilities = [
-            { name: 'blank',       weight: 130 },
+            { name: 'blank',       weight: 100 },
             { name: 'doubleJump',       weight: 15 },
             { name: 'magnet',           weight: 15 },
             { name: 'fartJump',         weight: 15 },
@@ -753,7 +789,7 @@ class Platformer2 extends Phaser.Scene {
 
         // Spawn diamond pickup
         let diamond = this.physics.add.sprite(block.x, block.y, "tilemap_sheet2", 62);
-        this.physics.add.collider(diamond, this.backgroundLayer);
+        this.physics.add.collider(diamond, this.groundLayer);
         this.physics.add.collider(diamond, this.platformLayer);
         diamond.body.setAllowGravity(true);
         diamond.body.setVelocityY(-500);
@@ -762,6 +798,9 @@ class Platformer2 extends Phaser.Scene {
         this.physics.add.overlap(my.sprite.player, diamond, (p, d) => {
             d.destroy();
             this.SCORE += 1;
+            this.sound.play("coin");
+            this.coinParticles.setPosition(d.x, d.y);
+            this.coinParticles.explode();
             this.scoreText.setText(`Diamonds: ${this.SCORE}`);
         });
 

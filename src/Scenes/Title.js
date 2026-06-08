@@ -19,13 +19,26 @@ class Title extends Phaser.Scene {
 
         this.jackpotDisplay();
 
+        this.titleMusic = this.sound.add("titleSong", {volume: 0.6, loop: true});
+        this.titleMusic.play();
+
         this.spaceKey = this.input.keyboard.addKey(
             Phaser.Input.Keyboard.KeyCodes.SPACE
         );
 
-        this.spaceKey.once("down", () => {
+        const pixelated = this.cameras.main.postFX.addPixelate(-1);
 
-            this.scene.start("platformerScene");
+        this.spaceKey.once("down", () => {
+            this.add.tween({
+                targets: pixelated,
+                duration: 700,
+                amount: 40,
+                onComplete: () => {
+                    this.cameras.main.fadeOut(100);
+                    this.titleMusic.stop();
+                    this.scene.start("platformerScene");
+                }
+            });
         });
     }
 

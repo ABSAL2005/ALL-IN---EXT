@@ -12,63 +12,65 @@ class Abilities {
         switch(abilityName) {
 
             case 'doubleJump':
-                //s.sound.play('yayyy')
+                s.sound.play('yay')
+                this.active.doubleJump = true
                 s.maxJumps = 2
                 this._showText('DOUBLE JUMP!')
                 break
 
             case 'magnet':
-                //s.sound.play('yayyy')
+                s.sound.play('yay')
                 this.active.magnet = true
                 this._showText('MAGNET!')
                 break
 
             case 'invulnerability':
+                s.sound.play('yay')
                 this.active.invulnerabilityCharges = (this.active.invulnerabilityCharges || 0) + 1
                 this._showText(`INVULNERABILITY x${this.active.invulnerabilityCharges}! (X)`)
                 break
 
             case 'dash':
-                //s.sound.play('yayyy')
+                s.sound.play('yay')
                 this.canDash = true
                 this._showText('BLINK! (>>/<<)')
                 break
 
             case 'diceShot':
-                //s.sound.play('yayyy')
+                s.sound.play('yay')
                 this.active.canDiceShot = true
                 this._showText('DICE SHOT! (Z)')
                 this._setupDiceShot()
                 break
 
             case 'fartJump':
-                //s.sound.play('yayyy')
+                s.sound.play('aw')
                 this.active.fartJump = true
                 this._showText('FART JUMP!')
                 break
 
             case 'iceSkates':
-                //s.sound.play('yayyy')
+                s.sound.play('aw')
                 this.active.iceSkates = true
                 s.DRAG = 100  // very slippery
                 this._showText('ICE SKATES!')
                 break
 
             case 'reverseControls':
-                //s.sound.play('awww')
+                s.sound.play('aw')
                 this.active.reverseControls = true
                 this._showText('REVERSED!')
                 break
 
             case 'bankrupt':
-                //s.sound.play('awww')
+                s.sound.play('aw')
                 s.SCORE = 0
                 s.scoreText.setText(`Diamonds: 0`)
                 this._showText('BANKRUPT!')
                 break
 
             case 'blank':
-                //s.sound.play('awww')
+                s.sound.play('aw')
                 this._showText('BLANKED!')
                 break
         }
@@ -153,6 +155,8 @@ class Abilities {
             dice.body.setAllowGravity(false)
             dice.setVelocityX(facingRight ? 300 : -300)
 
+            this.scene.sound.play("dice", {rate: 2})
+
             // Kill enemies on hit
             if (this.scene.enemies) {
                 this.scene.enemies.forEach(enemy => {
@@ -161,6 +165,22 @@ class Abilities {
                         if (enemy.active) this.scene.killEnemy(enemy, false)
                     })
                 })
+            }
+
+            // Hurt boss on hit
+            if (this.scene.boss) {
+                this.scene.physics.add.overlap(
+                    dice,
+                    this.scene.boss,
+                    () => {
+                        if (!dice.active || !this.scene.boss.active) return
+
+                        dice.destroy()
+
+                        // only works if boss is stunned because of takeDamage()
+                        this.scene.boss.takeDamage()
+                    }
+                )
             }
 
             // Destroy dice on hitting ground layer

@@ -1,5 +1,5 @@
 {
-    "activeFile": "Dealer.json",
+    "activeFile": "Gold.json",
     "expandedProjectPaths": [
         "."
     ],
@@ -70,11 +70,11 @@
             "expandedObjectLayers": [
                 4
             ],
-            "scale": 1,
-            "selectedLayer": 3,
+            "scale": 0.75,
+            "selectedLayer": 4,
             "viewCenter": {
-                "x": 492.5,
-                "y": 1112
+                "x": 393.3333333333333,
+                "y": 673.9999999999999
             }
         },
         "Gold.json#monochrome_tilemap_packed": {
@@ -88,8 +88,8 @@
             "scale": 1,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 1682,
-                "y": 154.5
+                "x": 953,
+                "y": 646.5
             }
         },
         "Jackpot.tmx#monochrome_tilemap_packed": {
@@ -110,15 +110,14 @@
     "map.width": 140,
     "openFiles": [
         "Jackpot.tmx",
-        "Gold.json",
-        "Dealer.json"
+        "Gold.json"
     ],
     "project": "All In.tiled-project",
     "property.type": "bool",
     "recentFiles": [
-        "Dealer.json",
         "Jackpot.tmx",
         "Gold.json",
+        "Dealer.json",
         "C:/CMPM 120/Pathfinder/assets/tiny-town-tileset.tmx",
         "C:/CMPM 120/PlatformImprovement/assets/platformer-level-1.tmx"
     ],

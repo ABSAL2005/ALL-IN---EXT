@@ -204,6 +204,8 @@ class Boss extends Phaser.Physics.Arcade.Sprite {
             )
             card.setAngle(Phaser.Math.RadToDeg(angle) + 90)
 
+            this.scene.sound.play("cardshot", {volume: 1, rate: 1.5})
+
             // Side cards home in after 1 second
             if (i !== 1) {
                 const capturedCard = card
@@ -233,6 +235,7 @@ class Boss extends Phaser.Physics.Arcade.Sprite {
 
         const card = this.cards.create(this.x, this.y + 20, 'card_throw')
         card.setScale(0.85)
+        this.scene.sound.play("cardshot", {volume: 1, rate: 2})
         card.setVelocity(
             Math.cos(angle) * speed,
             Math.sin(angle) * speed
@@ -247,6 +250,7 @@ class Boss extends Phaser.Physics.Arcade.Sprite {
         const maxX = this.scene.map.widthInPixels - 20
         const x = Phaser.Math.Between(20, maxX)
         const card = this.cards.create(x, -20, 'card_throw')
+        this.scene.sound.play("cardshot", {volume: 1, rate: 2})
         card.setScale(0.9)
         card.setVelocityY(Phaser.Math.Between(200, 350))
         card.setAngle(Phaser.Math.Between(0, 360))
@@ -320,10 +324,45 @@ class Boss extends Phaser.Physics.Arcade.Sprite {
     // ─── Damage ───────────────────────────────────────────────────
 
     takeDamage(amount) {
+        const scene = this.scene
         const state = this.stateMachine.getState()
         if (state.name === 'death') return
         if (this._invulnerable) return
         if (state.name !== 'stunned') return  // can ONLY be hit during stun
+
+        this.scene.sound.play("dead", {rate: 2})
+
+        if (this.hp > 1) {
+            let diamond = this.scene.physics.add.sprite(
+                this.scene.boss.x,
+                this.scene.boss.y,
+                "tilemap_sheet2",
+                62
+            )
+
+            this.scene.physics.add.collider(diamond, this.scene.groundLayer)
+
+            diamond.body.setAllowGravity(false)
+
+            this.scene.physics.add.overlap(
+                my.sprite.player,
+                diamond,
+                (p, d) => {
+                    d.destroy()
+                    this.scene.SCORE += 1
+                    this.scene.coinParticles.setPosition(p.x, p.y);
+                    this.scene.coinParticles.explode();
+                    this.scene.sound.play("coin");
+                    this.scene.scoreText.setText(
+                        `Diamonds: ${this.scene.SCORE}`
+                    )
+                }
+            )
+
+            this.scene.time.delayedCall(5000, () => {
+                if (diamond.active) diamond.destroy()
+            })
+        }
 
         this._flashHurt()
         this._invulnerable = true
@@ -396,7 +435,8 @@ class Boss extends Phaser.Physics.Arcade.Sprite {
 
         scene.time.delayedCall(1500, () => {
             emitter.destroy()
-            scene.scene.start('loseScene')
+            if (scene.bossMusic) scene.bossMusic.stop()  // stop music before win
+            scene.scene.start('creditsScene')
         })
     }
 

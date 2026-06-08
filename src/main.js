@@ -5,7 +5,7 @@
 // game config
 let config = {
     parent: 'phaser-game',
-    type: Phaser.CANVAS,
+    type: Phaser.AUTO,
     render: {
         pixelArt: true,
         roundPixels: true  // prevent pixel art from getting blurred when scaled
@@ -22,7 +22,7 @@ let config = {
     },
     width: 1440,
     height: 900,
-    scene: [Load, Title, BossBattle, Platformer2, Platformer, Lose, Casino]
+    scene: [Load, Title, BossBattle, Platformer2, Platformer, Lose, Casino, Credits]
 }
 
 var cursors;

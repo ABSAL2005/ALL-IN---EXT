@@ -31,6 +31,7 @@ class BossBattle extends Phaser.Scene {
         this.spinning = false;
         this.death = false;
         this.incomingAbilities = data?.abilities || {}
+        console.log("BossBattle received:", data.abilities);
     }
 
     setPlayer() {
@@ -101,7 +102,11 @@ class BossBattle extends Phaser.Scene {
         })
 
         this.Parallax.setScrollFactor(0.3);
+        this.Parallax.setTint(0x66aaff);
+        this.Parallax.setAlpha(0.7);        
         this.Parallax2.setScrollFactor(0.5);
+        this.Parallax2.setTint(0x66aaff);
+        this.Parallax2.setAlpha(0.7);        
 
         this.cameras.main.setZoom(2);
     }
@@ -169,8 +174,8 @@ class BossBattle extends Phaser.Scene {
 
         this.physics.add.overlap(my.sprite.player, this.coinGroup, (obj1, obj2) => {
             obj2.destroy(); // remove coin on overlap
-            coinParticles.setPosition(obj2.x, obj2.y);
-            coinParticles.explode();
+            this.coinParticles.setPosition(obj2.x, obj2.y);
+            this.coinParticles.explode();
             this.SCORE += 1;
             this.scoreText.setText(`Diamonds: ${this.SCORE}`);
         });        
@@ -178,7 +183,7 @@ class BossBattle extends Phaser.Scene {
         /// 
         /// VFX
         ///
-        let coinParticles = this.add.particles(0, 0, "kenny-particles", {
+        this.coinParticles = this.add.particles(0, 0, "kenny-particles", {
             frame: 'star_08.png',
             speed: {min: 20, max: 50},
             lifespan: 500,
@@ -307,12 +312,13 @@ class BossBattle extends Phaser.Scene {
         this.boss = new Boss(this, 9, 1);
 
         // Cards hit player → death
-        this.physics.add.overlap(my.sprite.player, this.boss.cards, (player, card) => {
+        /*this.physics.add.overlap(my.sprite.player, this.boss.cards, (player, card) => {
             card.destroy();
             if (!this.death && !this.abilities?.active?.invulnerable) {
                 this.deathAnim()
+                this.bossMusic.stop();
             }
-        });
+        });*/
 
         // Cards break breakable tiles, pass through everything else
         this.physics.add.collider(
@@ -350,6 +356,62 @@ class BossBattle extends Phaser.Scene {
         });
     }
 
+    bossIntro() {
+        // Freeze player during intro
+        my.sprite.player.body.setVelocity(0, 0)
+        my.sprite.player.body.setAccelerationX(0)
+        this.inputLocked = true
+
+        const lines = [
+            "...",
+            "The house always wins.",
+            "Time to collect what you OWE me."
+        ]
+
+        let delay = 1000
+
+        lines.forEach((line, i) => {
+            this.time.delayedCall(delay, () => {
+                const text = this.add.bitmapText(
+                    this.centerX,
+                    this.centerY,
+                    'kiwiSoda',
+                    line,
+                    20
+                ).setScrollFactor(0).setOrigin(0.5).setDepth(3000)
+
+                this.tweens.add({
+                    targets: text,
+                    alpha: { from: 0, to: 1 },
+                    duration: 300,
+                    onComplete: () => {
+                        this.time.delayedCall(900, () => {
+                            this.tweens.add({
+                                targets: text,
+                                alpha: 0,
+                                duration: 300,
+                                onComplete: () => text.destroy()
+                            })
+                        })
+                    }
+                })
+            })
+            delay += 1600
+        })
+
+        // Spawn boss after all lines finish
+        this.time.delayedCall(delay, () => {
+            this.inputLocked = false
+            this.bossSetup()
+            this.bossMusic = this.sound.add("bossSong", { volume: 0.2, loop: true});
+            this.bossMusic.play();
+
+            // Boss entrance flash
+            this.cameras.main.flash(400, 255, 50, 50)
+            this.cameras.main.shake(300, 0.015)
+        })
+    }
+
     updateBossStateLabel(stateName) {
         console.log("Boss state:", stateName);
     }
@@ -367,10 +429,29 @@ class BossBattle extends Phaser.Scene {
 
         // Restore from previous scene
         Object.assign(this.abilities.active, this.incomingAbilities)
-        if (this.abilities.active.canDash) this.abilities.canDash = true
+        if (this.abilities.active.canDash) {
+            this.abilities.canDash = true
+        }
+
+        if (this.abilities.active.canDiceShot) {
+            this.abilities._setupDiceShot()
+        }
+
+        if (this.abilities.active.doubleJump) {
+            this.maxJumps = 2
+        }
+
+        if (this.abilities.active.iceSkates) {
+            this.DRAG = 100
+        }
+        
         this.collisionHandler();
         this.fanSetup();
-        this.bossSetup();
+
+        this.time.delayedCall(2000, () => {
+            this.bossIntro()
+        });
+
         this.updateBossStateLabel();
 
         this.physics.world.TILE_BIAS = 17;
@@ -425,7 +506,7 @@ class BossBattle extends Phaser.Scene {
     }
 
     deathAnim() {
-        if (this.abilities?.active?.invulnerable) return
+        if (this.abilities?.active?.invulnerable) return  // blocked!
         if (this.death) return
         this.death = true
 
@@ -436,6 +517,7 @@ class BossBattle extends Phaser.Scene {
 
         // Camera shake
         this.cameras.main.shake(500, 0.02)
+        this.sound.play("death")
 
         // Big explosion burst
         let explosion = this.add.particles(my.sprite.player.x, my.sprite.player.y, "kenny-particles", {
@@ -464,6 +546,8 @@ class BossBattle extends Phaser.Scene {
             explosion2.explode(40)
         })
 
+        my.sprite.player.body.destroy();
+
         // Transition to lose scene after explosion
         this.time.delayedCall(1200, () => {
             this.scene.start("loseScene")
@@ -473,6 +557,7 @@ class BossBattle extends Phaser.Scene {
     playerWalking() {
         const goLeft = this.abilities.isReversed() ? cursors.right.isDown : cursors.left.isDown
         const goRight = this.abilities.isReversed() ? cursors.left.isDown : cursors.right.isDown
+        if (this.inputLocked) return
 
         if (!this.crouch) {
             if(goLeft && this.death == false) {
@@ -574,11 +659,12 @@ class BossBattle extends Phaser.Scene {
     }
 
     playerJumping() {
-                // player jump
+        // player jump
         // note that we need body.blocked rather than body.touching b/c the former applies to tilemap tiles and the latter to the "ground"
         // reset when grounded
         const isGrounded = my.sprite.player.body.blocked.down;
         const justPressedJump = Phaser.Input.Keyboard.JustDown(this.jumpKey);
+        if (this.inputLocked) return
 
         // reset jumps when on ground
         if (isGrounded) {
@@ -601,6 +687,7 @@ class BossBattle extends Phaser.Scene {
                 // spawn jump particles on player's feet
                 this.jumpVFX.setPosition(my.sprite.player.x, my.sprite.player.y);
                 this.jumpVFX.explode(8);
+                this.sound.play("jump", {volume: 0.2});
             }
         }
     }
@@ -610,8 +697,8 @@ class BossBattle extends Phaser.Scene {
         this.canSpinWheel = true
 
         const weightedAbilities = [
-            { name: 'blank',           weight: 70 },
-            { name: 'invulnerability', weight: 30 },
+            { name: 'blank',           weight: 30 },
+            { name: 'invulnerability', weight: 70 },
         ]
 
         const totalWeight = weightedAbilities.reduce((sum, a) => sum + a.weight, 0)
