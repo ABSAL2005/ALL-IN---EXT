@@ -356,7 +356,7 @@ class Platformer extends Phaser.Scene {
             this.platformLayer,
             null,
             (player, tile) => {
-                return player.body.velocity.y > 0;
+                return player.body.velocity.y > 0 && !cursors.down.isDown;
             }
         );
 

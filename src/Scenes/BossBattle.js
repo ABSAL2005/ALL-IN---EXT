@@ -311,13 +311,13 @@ class BossBattle extends Phaser.Scene {
         this.boss = new Boss(this, 9, 1);
 
         // Cards hit player → death
-        /*this.physics.add.overlap(my.sprite.player, this.boss.cards, (player, card) => {
+        this.physics.add.overlap(my.sprite.player, this.boss.cards, (player, card) => {
             card.destroy();
             if (!this.death && !this.abilities?.active?.invulnerable) {
                 this.deathAnim()
                 this.bossMusic.stop();
             }
-        });*/
+        });
 
         // Cards break breakable tiles, pass through everything else
         this.physics.add.collider(

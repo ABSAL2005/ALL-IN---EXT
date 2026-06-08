@@ -32,6 +32,7 @@ class Abilities {
 
             case 'dash':
                 s.sound.play('yay')
+                this.active.canDash = true
                 this.canDash = true
                 this._showText('BLINK! (>>/<<)')
                 break
@@ -103,7 +104,7 @@ class Abilities {
     // Call from playerJumping() when a jump happens
     onJump() {
         if (this.active.fartJump) {
-            this.scene.sound.play('fart', { volume: 0.4, rate: 1.5 })
+            this.scene.sound.play('fart', { volume: 0.8, rate: 1.5 })
         }
     }
 

@@ -105,7 +105,7 @@ class Casino extends Phaser.Scene {
             );
 
             this.rKey.once("down", () => {
-
+                this.casinoSound.stop();
                 this.scene.start("platformerScene");
             });
         }
