@@ -226,7 +226,7 @@ class Platformer extends Phaser.Scene {
         this.blockGroup = this.add.group(this.blocks);
 
         this.physics.add.overlap(my.sprite.player, this.doorGroup, () => {
-
+            this.bgMusic.stop();
             this.scene.start("casinoScene", {
                 diamonds : this.SCORE,
                 abilities: this.abilities?.active || {},
@@ -272,6 +272,8 @@ class Platformer extends Phaser.Scene {
         //
         this.walkingSound = this.sound.add("footstep", { volume: 0.2 });
         this.gamblingSound = this.sound.add("gambling", { volume: 0.5 });
+        this.bgMusic = this.sound.add("lvl1", {volume: 0.3, loop: true});
+        this.bgMusic.play();
 
         //
         // VFX
@@ -458,6 +460,7 @@ class Platformer extends Phaser.Scene {
 
         // Transition to lose scene after explosion
         this.time.delayedCall(1200, () => {
+            this.bgMusic.stop();
             this.scene.start("loseScene")
         })
     }
@@ -633,7 +636,7 @@ class Platformer extends Phaser.Scene {
             { name: 'iceSkates',        weight: 10 },
             { name: 'reverseControls',  weight: 10 },
             { name: 'invulnerability',  weight: 10 },
-            { name: 'diceShot',         weight: 8000000  },
+            { name: 'diceShot',         weight: 8  },
             { name: 'bankrupt',         weight: 5  },
         ]
 

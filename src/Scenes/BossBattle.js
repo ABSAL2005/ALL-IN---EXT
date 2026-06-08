@@ -31,7 +31,6 @@ class BossBattle extends Phaser.Scene {
         this.spinning = false;
         this.death = false;
         this.incomingAbilities = data?.abilities || {}
-        console.log("BossBattle received:", data.abilities);
     }
 
     setPlayer() {

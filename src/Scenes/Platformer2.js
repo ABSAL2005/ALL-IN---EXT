@@ -253,7 +253,7 @@ class Platformer2 extends Phaser.Scene {
         this.blockGroup = this.add.group(this.blocks);
 
         this.physics.add.overlap(my.sprite.player, this.doorGroup, () => {
-
+            this.bgMusic.stop();
             this.scene.start("casinoScene", {
                 diamonds : this.SCORE,
                 abilities: this.abilities?.active || {},
@@ -363,6 +363,8 @@ class Platformer2 extends Phaser.Scene {
         //
         this.walkingSound = this.sound.add("footstep", { volume: 0.2 });
         this.gamblingSound = this.sound.add("gambling", { volume: 0.5 });
+        this.bgMusic = this.sound.add("lvl2", {volume: 0.3, loop: true});
+        this.bgMusic.play();
 
         //
         // VFX
@@ -516,8 +518,6 @@ class Platformer2 extends Phaser.Scene {
 
         this.crouch = cursors.down.isDown;
         this.updateEnemies()
-
-        console.log("Leaving Platformer2:", this.abilities.active);
     }
 
     deathAnim() {
@@ -565,6 +565,7 @@ class Platformer2 extends Phaser.Scene {
 
         // Transition to lose scene after explosion
         this.time.delayedCall(1200, () => {
+            this.bgMusic.stop();
             this.scene.start("loseScene")
         })
     }

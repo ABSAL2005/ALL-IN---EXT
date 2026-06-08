@@ -11,7 +11,6 @@ class Casino extends Phaser.Scene {
         this.reelHeight = 80;
         this.reelSpinning = false;
         this.nextScene = data.nextScene || 'platformer2Scene'
-        console.log("Casino received:", data.abilities);
     }
 
     create() {
@@ -133,7 +132,6 @@ class Casino extends Phaser.Scene {
             this.infoText.setText(".....");
         }
 
-        console.log("Casino sending:", this.abilitiesData);
     }
 
     spinReels() {
